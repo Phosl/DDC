@@ -16,6 +16,9 @@ export const siteConfig = {
     "Dall’inferno in su, il gioco della risalita di DDC",
   locale: "it_IT",
   language: "it-IT",
+  artistProfiles: {
+    spotify: "https://open.spotify.com/artist/1Il7gP9WOSvyHCsvZAzuJR",
+  },
   socialImage: {
     width: 1200,
     height: 630,

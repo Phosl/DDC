@@ -32,6 +32,7 @@ const homeStructuredData = {
       description: `Artista e autore del progetto musicale ${siteConfig.projectName}.`,
       url: absoluteUrl(),
       image: absoluteUrl("/media/hero-editorial.jpeg"),
+      sameAs: [siteConfig.artistProfiles.spotify],
     },
     {
       "@type": "CreativeWork",
@@ -215,8 +216,24 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
+            <div className={styles.spotifyPanel} data-reveal>
+              <div className={styles.spotifyCopy}>
+                <small>Catalogo pubblico</small>
+                <strong>Davide Del Carmen su Spotify</strong>
+              </div>
+              <a
+                className={styles.spotifyAction}
+                href={siteConfig.artistProfiles.spotify}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ascolta Davide Del Carmen su Spotify, si apre in una nuova scheda"
+              >
+                Ascolta su Spotify <span aria-hidden="true">↗</span>
+              </a>
+            </div>
             <p className={styles.privateNote} data-reveal>
-              Ascolto pubblico in arrivo. La playlist privata non viene esposta dal sito.
+              Ghetto Superstar è ancora in lavorazione. Su Spotify trovi i brani già
+              pubblicati.
             </p>
           </div>
         </div>

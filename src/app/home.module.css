@@ -456,9 +456,64 @@
   letter-spacing: -0.025em;
 }
 
+.spotifyPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1rem 1rem 1.2rem;
+  margin-top: 2rem;
+  border: 1px solid var(--line);
+  background: rgba(231, 225, 215, 0.035);
+}
+
+.spotifyCopy {
+  display: grid;
+  min-width: 0;
+  gap: 0.38rem;
+}
+
+.spotifyCopy small {
+  color: var(--cyan);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.spotifyCopy strong {
+  overflow: hidden;
+  font-size: clamp(0.95rem, 1.8vw, 1.18rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spotifyAction {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--paper-bright);
+  color: var(--ink);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: background 180ms ease;
+}
+
+.spotifyAction:hover,
+.spotifyAction:focus-visible {
+  background: var(--cyan);
+}
+
 .privateNote {
   max-width: 28rem;
-  margin: 2rem 0 0;
+  margin: 1rem 0 0;
   color: var(--muted);
   font-size: 0.74rem;
   line-height: 1.5;
@@ -721,6 +776,18 @@
 
   .gameCopy {
     min-height: 70svh;
+  }
+
+  .spotifyPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .spotifyCopy strong {
+    white-space: normal;
+  }
+
+  .spotifyAction {
+    width: 100%;
   }
 }
 
