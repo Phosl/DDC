@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+.vercel/
+*.log
+.DS_Store
+.env*
+!.env.example
+doc/
+*.m4a
+*.HEIC

@@ -1,0 +1,871 @@
+.page {
+  overflow: clip;
+  background: var(--ink);
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  min-height: 100svh;
+  align-items: flex-end;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 7.5rem var(--gutter) clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.heroMedia,
+.heroShade {
+  position: absolute;
+  z-index: -3;
+  inset: 0;
+}
+
+.heroMedia {
+  left: 36%;
+  overflow: hidden;
+}
+
+.heroImage {
+  object-fit: cover;
+  object-position: 54% 36%;
+  filter: saturate(0.72) contrast(1.08) brightness(0.82);
+}
+
+.heroShade {
+  z-index: -2;
+  background:
+    linear-gradient(90deg, #080808 0%, rgba(8, 8, 8, 0.96) 26%, rgba(8, 8, 8, 0.38) 63%, rgba(8, 8, 8, 0.25) 100%),
+    linear-gradient(0deg, rgba(8, 8, 8, 0.75) 0%, transparent 48%);
+}
+
+.heroContent {
+  position: relative;
+  z-index: 3;
+  width: min(100%, var(--max-width));
+  margin: 0 auto;
+}
+
+.eyebrow,
+.sectionLabel {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.eyebrow span {
+  margin-inline: 0.45rem;
+  color: var(--magenta);
+}
+
+.heroTitle {
+  width: min-content;
+  margin: 1.15rem 0 1rem;
+  color: var(--paper-bright);
+  font-family: var(--display);
+  font-size: clamp(4.7rem, 13.5vw, 13.5rem);
+  font-stretch: condensed;
+  font-weight: 900;
+  letter-spacing: -0.095em;
+  line-height: 0.72;
+  text-transform: uppercase;
+}
+
+.titleMask {
+  display: block;
+  overflow: hidden;
+  padding-right: 0.12em;
+  padding-bottom: 0.12em;
+}
+
+.titleMask > span {
+  display: block;
+}
+
+.titleOffset {
+  margin-left: clamp(1rem, 9vw, 9rem);
+  color: transparent;
+  -webkit-text-stroke: max(1px, 0.012em) var(--paper-bright);
+}
+
+.heroBottom {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.7fr) 1fr;
+  align-items: end;
+  gap: 2rem;
+  padding-top: 1.35rem;
+  border-top: 1px solid var(--line);
+}
+
+.heroBottom > p {
+  max-width: 27rem;
+  margin: 0;
+  font-size: clamp(1.15rem, 2vw, 1.8rem);
+  letter-spacing: -0.035em;
+}
+
+.heroActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+}
+
+.primaryAction,
+.gameAction {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--paper);
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.primaryAction:hover,
+.primaryAction:focus-visible {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.textAction {
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.altimeter {
+  position: absolute;
+  z-index: 4;
+  top: 7rem;
+  right: var(--gutter);
+  bottom: 3.7rem;
+  display: flex;
+  width: 2.2rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  writing-mode: vertical-rl;
+}
+
+.altimeterTrack {
+  position: relative;
+  width: 1px;
+  flex: 1;
+  overflow: hidden;
+  background: rgba(231, 225, 215, 0.24);
+}
+
+.altimeterTrack > span {
+  position: absolute;
+  inset: 0;
+  background: var(--cyan);
+  transform: scaleY(0);
+  transform-origin: bottom;
+}
+
+.heroOrbit,
+.manifestoOrbit {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 68%;
+  width: min(58vw, 52rem);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.heroOrbit span,
+.manifestoOrbit span {
+  position: absolute;
+  border: 1px solid rgba(231, 225, 215, 0.22);
+  border-radius: 50%;
+  inset: 0;
+}
+
+.heroOrbit span:nth-child(2),
+.manifestoOrbit span:nth-child(2) {
+  inset: 15%;
+  border-color: rgba(39, 224, 209, 0.28);
+}
+
+.heroOrbit span:nth-child(3),
+.manifestoOrbit span:nth-child(3) {
+  inset: 31%;
+  border-color: rgba(255, 42, 120, 0.3);
+}
+
+.manifesto {
+  position: relative;
+  display: grid;
+  min-height: 88svh;
+  place-content: center;
+  overflow: hidden;
+  padding: 8rem var(--gutter);
+  text-align: center;
+}
+
+.manifestoOrbit {
+  top: 52%;
+  left: 50%;
+  width: min(78vw, 68rem);
+}
+
+.manifestoCopy {
+  position: relative;
+  max-width: 1100px;
+  margin: 2.5rem auto 0;
+  font-family: var(--display);
+  font-size: clamp(3.1rem, 8.8vw, 9.2rem);
+  font-weight: 900;
+  letter-spacing: -0.075em;
+  line-height: 0.84;
+  text-transform: uppercase;
+}
+
+.manifestoCopy span {
+  display: block;
+  color: var(--cyan);
+}
+
+.manifestoNote {
+  max-width: 25rem;
+  margin: 2.5rem auto 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.journey {
+  padding: 7rem var(--gutter) 10rem;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.journey .sectionLabel,
+.gameTeaser .sectionLabel {
+  color: rgba(8, 8, 8, 0.54);
+}
+
+.sectionHeader {
+  display: grid;
+  max-width: var(--max-width);
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  margin: 0 auto 7rem;
+}
+
+.sectionHeader h2,
+.projectHeading h2,
+.gameCopy h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(4rem, 9vw, 9rem);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  line-height: 0.82;
+  text-transform: uppercase;
+}
+
+.chapterList {
+  display: grid;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  gap: clamp(7rem, 14vw, 14rem);
+}
+
+.chapter {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(18rem, 0.88fr);
+  align-items: center;
+  gap: clamp(2rem, 7vw, 8rem);
+}
+
+.chapter:nth-child(even) .chapterImageWrap {
+  order: 2;
+}
+
+.chapterImageWrap {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #bab5ad;
+}
+
+.chapterImage {
+  object-fit: cover;
+}
+
+.chapter_mono .chapterImage {
+  filter: grayscale(1) contrast(1.05);
+}
+
+.chapter_magenta .chapterImage {
+  filter: saturate(1.28) contrast(1.02);
+}
+
+.chapter_cyan .chapterImage {
+  filter: grayscale(1) contrast(1.18);
+}
+
+.chapterCopy {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 1.2rem;
+}
+
+.chapterIndex,
+.chapterKicker {
+  margin: 0 0 2.7rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.chapterIndex {
+  color: var(--magenta);
+}
+
+.chapterCopy h3,
+.chapterBody {
+  grid-column: 2;
+}
+
+.chapterCopy h3 {
+  max-width: 10ch;
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(2.8rem, 5.2vw, 5.5rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 0.93;
+}
+
+.chapterBody {
+  max-width: 30rem;
+  margin: 2rem 0 0;
+  color: rgba(8, 8, 8, 0.64);
+  line-height: 1.55;
+}
+
+.project {
+  padding: 8rem var(--gutter);
+}
+
+.projectHeading,
+.projectGrid,
+.facts {
+  max-width: var(--max-width);
+  margin-inline: auto;
+}
+
+.projectHeading {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  align-items: end;
+  margin-bottom: 5rem;
+}
+
+.projectHeading h2 {
+  color: var(--paper-bright);
+}
+
+.workLabel {
+  margin: 1.15rem 0 0;
+  color: var(--magenta);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.projectGrid {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.78fr) minmax(0, 1.22fr);
+  gap: clamp(2.5rem, 7vw, 8rem);
+}
+
+.projectPortrait {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: #d4d1cb;
+}
+
+.projectImage {
+  object-fit: cover;
+}
+
+.projectPortrait > span {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.8rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+}
+
+.trackIntro {
+  max-width: 30rem;
+  margin: 0 0 3rem;
+  font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.trackList {
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.trackList li {
+  display: grid;
+  min-height: 4.8rem;
+  grid-template-columns: 3.2rem 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.trackList span,
+.trackList small {
+  color: var(--muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.trackList strong {
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.privateNote {
+  max-width: 28rem;
+  margin: 2rem 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 8rem;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.facts > div {
+  display: flex;
+  min-height: 11rem;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.2rem;
+  border-right: 1px solid var(--line);
+}
+
+.facts > div:last-child {
+  border-right: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.facts dd {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(2.7rem, 6vw, 5.5rem);
+  font-weight: 900;
+  letter-spacing: -0.07em;
+  line-height: 0.8;
+}
+
+.gameTeaser {
+  position: relative;
+  display: grid;
+  min-height: 100svh;
+  grid-template-columns: 1.08fr 0.92fr;
+  overflow: hidden;
+  background: var(--cyan);
+  color: var(--ink);
+}
+
+.gameScene {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  border-right: 1px solid rgba(8, 8, 8, 0.35);
+  background: linear-gradient(#78e3dc 0 63%, #876f64 63% 100%);
+}
+
+.gameSun {
+  position: absolute;
+  top: 13%;
+  left: 13%;
+  width: clamp(6rem, 15vw, 13rem);
+  aspect-ratio: 1;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: var(--acid);
+  box-shadow: 0 0 0 1.2rem rgba(215, 255, 70, 0.14);
+}
+
+.gameHouse {
+  position: absolute;
+  bottom: 25%;
+  left: 50%;
+  width: min(58%, 28rem);
+  aspect-ratio: 1.5;
+  border: 3px solid var(--ink);
+  background: var(--magenta);
+  transform: translateX(-50%);
+  box-shadow: 1.2rem 1.2rem 0 rgba(8, 8, 8, 0.82);
+}
+
+.gameHouse::before {
+  position: absolute;
+  top: -36%;
+  left: -9%;
+  width: 118%;
+  height: 45%;
+  border: 3px solid var(--ink);
+  background: #f05688;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  content: "";
+}
+
+.gameHouse span {
+  position: absolute;
+  bottom: 0;
+  width: 16%;
+  height: 48%;
+  border: 3px solid var(--ink);
+  background: var(--cyan);
+}
+
+.gameHouse span:first-child {
+  left: 12%;
+}
+
+.gameHouse span:nth-child(2) {
+  left: 42%;
+  height: 62%;
+  background: #7b6259;
+}
+
+.gameHouse span:last-child {
+  right: 12%;
+}
+
+.gameRoad {
+  position: absolute;
+  right: -10%;
+  bottom: -18%;
+  left: -10%;
+  height: 42%;
+  border-top: 3px solid var(--ink);
+  background:
+    linear-gradient(102deg, transparent 45%, var(--ink) 46% 47%, transparent 48%) 12% 20% / 22% 60% no-repeat,
+    linear-gradient(70deg, transparent 47%, var(--ink) 48% 49%, transparent 50%) 75% 10% / 26% 70% no-repeat,
+    #77645d;
+  transform: perspective(20rem) rotateX(14deg);
+}
+
+.gameCopy {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(6rem, 10vw, 9rem) var(--gutter) clamp(2rem, 5vw, 4rem);
+}
+
+.gameCopy h2 {
+  align-self: center;
+  color: var(--ink);
+  font-size: clamp(4.2rem, 8.5vw, 8rem);
+}
+
+.gameMeta {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.gameMeta p {
+  max-width: 16rem;
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.7rem);
+  letter-spacing: -0.035em;
+}
+
+.gameAction {
+  border-color: var(--ink);
+}
+
+.gameAction:hover,
+.gameAction:focus-visible {
+  background: var(--ink);
+  color: var(--cyan);
+}
+
+.footer {
+  display: grid;
+  min-height: 82svh;
+  grid-template-columns: 0.78fr 1.22fr;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.footerPortrait {
+  position: relative;
+  min-height: 82svh;
+  overflow: hidden;
+}
+
+.footerImage {
+  object-fit: cover;
+  object-position: 50% 20%;
+  filter: contrast(1.08);
+}
+
+.footerCopy {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(3rem, 7vw, 7rem) var(--gutter) 2rem;
+}
+
+.footerCopy .sectionLabel {
+  color: rgba(8, 8, 8, 0.52);
+}
+
+.footerStatement {
+  max-width: 9ch;
+  margin: 4rem 0;
+  font-family: var(--display);
+  font-size: clamp(4rem, 9vw, 9rem);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  line-height: 0.82;
+  text-transform: uppercase;
+}
+
+.footerBottom {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(8, 8, 8, 0.28);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .heroMedia {
+    left: 16%;
+  }
+
+  .heroShade {
+    background:
+      linear-gradient(90deg, rgba(8, 8, 8, 0.94), rgba(8, 8, 8, 0.22)),
+      linear-gradient(0deg, rgba(8, 8, 8, 0.82) 0%, transparent 58%);
+  }
+
+  .heroBottom,
+  .sectionHeader,
+  .projectHeading {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeader,
+  .projectHeading {
+    gap: 2.5rem;
+  }
+
+  .gameTeaser,
+  .footer {
+    grid-template-columns: 1fr;
+  }
+
+  .gameScene,
+  .footerPortrait {
+    min-height: 68svh;
+  }
+
+  .gameScene {
+    border-right: 0;
+    border-bottom: 1px solid rgba(8, 8, 8, 0.35);
+  }
+
+  .gameCopy {
+    min-height: 70svh;
+  }
+}
+
+@media (max-width: 700px) {
+  .hero {
+    min-height: 100svh;
+    padding-bottom: 1.2rem;
+  }
+
+  .heroMedia {
+    left: 0;
+  }
+
+  .heroImage {
+    object-position: 58% 42%;
+  }
+
+  .heroShade {
+    background:
+      linear-gradient(90deg, rgba(8, 8, 8, 0.7), rgba(8, 8, 8, 0.08)),
+      linear-gradient(0deg, rgba(8, 8, 8, 0.97) 0%, rgba(8, 8, 8, 0.24) 62%);
+  }
+
+  .heroOrbit {
+    left: 66%;
+    width: 100vw;
+  }
+
+  .heroTitle {
+    font-size: clamp(4.2rem, 21vw, 7rem);
+    line-height: 0.76;
+  }
+
+  .titleOffset {
+    margin-left: 0.22em;
+  }
+
+  .heroBottom {
+    gap: 1.4rem;
+  }
+
+  .heroActions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+
+  .primaryAction {
+    width: 100%;
+  }
+
+  .altimeter {
+    display: none;
+  }
+
+  .manifesto {
+    min-height: 78svh;
+    padding-block: 6rem;
+  }
+
+  .manifestoCopy {
+    font-size: clamp(3rem, 15vw, 5.5rem);
+  }
+
+  .journey,
+  .project {
+    padding-block: 6rem;
+  }
+
+  .sectionHeader {
+    margin-bottom: 4rem;
+  }
+
+  .chapter {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .chapter:nth-child(even) .chapterImageWrap {
+    order: 0;
+  }
+
+  .chapterCopy {
+    grid-template-columns: 2.1rem 1fr;
+  }
+
+  .chapterIndex,
+  .chapterKicker {
+    margin-bottom: 1.8rem;
+  }
+
+  .projectGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .projectPortrait {
+    aspect-ratio: 4 / 5;
+  }
+
+  .trackList li {
+    min-height: 4.5rem;
+    grid-template-columns: 2.2rem 1fr;
+  }
+
+  .trackList small {
+    display: none;
+  }
+
+  .facts {
+    grid-template-columns: 1fr;
+    margin-top: 5rem;
+  }
+
+  .facts > div {
+    min-height: 7.5rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .facts > div:last-child {
+    border-bottom: 0;
+  }
+
+  .gameScene {
+    min-height: 58svh;
+  }
+
+  .gameCopy {
+    min-height: 64svh;
+  }
+
+  .gameMeta {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gameAction {
+    width: 100%;
+  }
+
+  .footerPortrait {
+    min-height: 70svh;
+  }
+
+  .footerCopy {
+    min-height: 67svh;
+  }
+}

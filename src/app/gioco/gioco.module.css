@@ -1,0 +1,272 @@
+.page {
+  --paper: #e7e1d7;
+  --black: #080808;
+  --ink: #111111;
+  --magenta: #ff2a78;
+  --magenta-on-paper: #c60050;
+  --cyan: #27e0d1;
+  min-height: 100svh;
+  overflow: clip;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  min-height: max(38rem, 82svh);
+  align-items: flex-end;
+  padding: clamp(8rem, 18vw, 13rem) clamp(1rem, 4vw, 4rem)
+    clamp(2rem, 6vw, 5rem);
+  isolation: isolate;
+}
+
+.heroGrid {
+  position: absolute;
+  z-index: -1;
+  inset: 0 clamp(1rem, 4vw, 4rem);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  pointer-events: none;
+}
+
+.heroGrid span {
+  border-left: 1px solid rgba(8, 8, 8, 0.12);
+}
+
+.heroGrid span:last-child {
+  border-right: 1px solid rgba(8, 8, 8, 0.12);
+}
+
+.heroContent {
+  width: min(100%, 90rem);
+  margin-inline: auto;
+}
+
+.eyebrow,
+.sectionIndex {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.67rem;
+  font-weight: 650;
+  letter-spacing: 0.15em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  margin-bottom: clamp(1.5rem, 4vw, 3rem);
+}
+
+.hero h1 {
+  max-width: 10ch;
+  margin: 0;
+  font-size: clamp(4.1rem, 13.8vw, 13rem);
+  font-weight: 900;
+  letter-spacing: -0.085em;
+  line-height: 0.75;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.hero h1 em {
+  display: block;
+  color: var(--magenta-on-paper);
+  font-style: normal;
+}
+
+.heroFooter {
+  display: flex;
+  max-width: 54rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-top: clamp(2rem, 5vw, 4rem);
+  margin-left: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(8, 8, 8, 0.34);
+}
+
+.heroFooter p {
+  margin: 0;
+  font-size: clamp(0.9rem, 1.5vw, 1.12rem);
+}
+
+.heroFooter a,
+.outro a {
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-decoration-thickness: 1px;
+  text-transform: uppercase;
+  text-underline-offset: 0.35rem;
+}
+
+.heroFooter a:focus-visible,
+.outro a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 0.35rem;
+}
+
+.gameSection {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.76fr) minmax(20rem, 1fr);
+  gap: clamp(3rem, 9vw, 10rem);
+  align-items: start;
+  padding: clamp(5rem, 10vw, 10rem) clamp(1rem, 5vw, 5rem);
+  background: var(--black);
+  color: #f4f0e8;
+}
+
+.rules {
+  position: sticky;
+  top: 7rem;
+  max-width: 35rem;
+}
+
+.sectionIndex {
+  color: rgba(244, 240, 232, 0.48);
+}
+
+.rules h2,
+.outro h2 {
+  margin: 1.4rem 0 0;
+  font-size: clamp(3rem, 7vw, 7rem);
+  font-weight: 880;
+  letter-spacing: -0.075em;
+  line-height: 0.86;
+  text-wrap: balance;
+}
+
+.rulesLead {
+  max-width: 31ch;
+  margin: 2rem 0 0;
+  color: rgba(244, 240, 232, 0.7);
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  line-height: 1.55;
+}
+
+.rules ol {
+  display: grid;
+  gap: 0;
+  max-width: 34rem;
+  margin: clamp(2.5rem, 5vw, 5rem) 0 0;
+  padding: 0;
+  border-top: 1px solid rgba(244, 240, 232, 0.2);
+  list-style: none;
+}
+
+.rules li {
+  display: grid;
+  grid-template-columns: 2.7rem 1fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid rgba(244, 240, 232, 0.2);
+}
+
+.rules li > span {
+  color: var(--cyan);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.rules li p {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  color: rgba(244, 240, 232, 0.64);
+  font-size: 0.87rem;
+  line-height: 1.45;
+}
+
+.rules li strong {
+  color: #f4f0e8;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gameWrap {
+  width: min(100%, 39rem);
+  justify-self: center;
+}
+
+.outro {
+  min-height: max(34rem, 72svh);
+  padding: clamp(5rem, 10vw, 10rem) clamp(1rem, 5vw, 5rem);
+  background: var(--magenta);
+  color: var(--black);
+}
+
+.outro .sectionIndex {
+  color: rgba(8, 8, 8, 0.58);
+}
+
+.outro h2 {
+  max-width: 12ch;
+  margin-bottom: clamp(3rem, 7vw, 6rem);
+  font-size: clamp(3.8rem, 10vw, 10rem);
+}
+
+@media (max-width: 54rem) {
+  .hero {
+    min-height: max(35rem, 78svh);
+  }
+
+  .heroFooter {
+    margin-left: 0;
+  }
+
+  .gameSection {
+    grid-template-columns: 1fr;
+    gap: 4rem;
+  }
+
+  .rules {
+    position: static;
+  }
+
+  .gameWrap {
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 34rem) {
+  .hero {
+    padding-inline: 1rem;
+  }
+
+  .heroGrid {
+    inset-inline: 1rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(3rem, 13.8vw, 4rem);
+    letter-spacing: -0.07em;
+  }
+
+  .heroFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .gameSection,
+  .outro {
+    padding-inline: 1rem;
+  }
+
+  .rules h2 {
+    max-width: 8ch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroFooter a,
+  .outro a {
+    scroll-behavior: auto;
+  }
+}
