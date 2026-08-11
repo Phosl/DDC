@@ -5,6 +5,7 @@
   --magenta: #ff2a78;
   --magenta-on-paper: #c60050;
   --cyan: #27e0d1;
+  --acid: #d7ff46;
   min-height: 100svh;
   overflow: clip;
   background: var(--paper);
@@ -20,6 +21,66 @@
   padding: clamp(8rem, 18vw, 13rem) clamp(1rem, 4vw, 4rem)
     clamp(2rem, 6vw, 5rem);
   isolation: isolate;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(8, 8, 8, 0.025) 0,
+      rgba(8, 8, 8, 0.025) 1px,
+      transparent 1px,
+      transparent 6px
+    ),
+    var(--paper);
+}
+
+.hero::before {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: clamp(1rem, 4vw, 4rem);
+  width: clamp(0.35rem, 0.8vw, 0.8rem);
+  background: var(--magenta);
+  content: "";
+}
+
+.heroPortal {
+  position: absolute;
+  z-index: -1;
+  top: 15%;
+  right: clamp(2rem, 8vw, 8rem);
+  width: min(33vw, 31rem);
+  aspect-ratio: 1;
+  opacity: 0.72;
+}
+
+.heroPortal span {
+  position: absolute;
+  border: clamp(2px, 0.3vw, 4px) solid var(--black);
+  inset: 9%;
+  transform: rotate(45deg);
+  box-shadow: clamp(0.4rem, 1vw, 0.9rem) clamp(0.4rem, 1vw, 0.9rem) 0
+    rgba(8, 8, 8, 0.12);
+}
+
+.heroPortal span:nth-child(2) {
+  border-color: var(--magenta);
+  inset: 24%;
+}
+
+.heroPortal span:nth-child(3) {
+  border-color: var(--cyan);
+  inset: 39%;
+}
+
+.heroPortal b {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  color: var(--black);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(2.4rem, 8vw, 7rem);
+  line-height: 0.8;
 }
 
 .heroGrid {
@@ -68,12 +129,14 @@
   line-height: 0.75;
   text-transform: uppercase;
   text-wrap: balance;
+  text-shadow: 0.08em 0.08em 0 rgba(8, 8, 8, 0.12);
 }
 
 .hero h1 em {
   display: block;
   color: var(--magenta-on-paper);
   font-style: normal;
+  text-shadow: 0.065em 0.065em 0 var(--cyan);
 }
 
 .heroFooter {
@@ -116,7 +179,10 @@
   gap: clamp(3rem, 9vw, 10rem);
   align-items: start;
   padding: clamp(5rem, 10vw, 10rem) clamp(1rem, 5vw, 5rem);
-  background: var(--black);
+  background:
+    linear-gradient(rgba(244, 240, 232, 0.035) 1px, transparent 1px) 0 0 / 100%
+      4rem,
+    var(--black);
   color: #f4f0e8;
 }
 
@@ -127,7 +193,7 @@
 }
 
 .sectionIndex {
-  color: rgba(244, 240, 232, 0.48);
+  color: var(--acid);
 }
 
 .rules h2,
@@ -168,6 +234,11 @@
 }
 
 .rules li > span {
+  display: grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  place-items: center;
+  border: 1px solid var(--cyan);
   color: var(--cyan);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.68rem;
@@ -198,7 +269,15 @@
 .outro {
   min-height: max(34rem, 72svh);
   padding: clamp(5rem, 10vw, 10rem) clamp(1rem, 5vw, 5rem);
-  background: var(--magenta);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(8, 8, 8, 0.055) 0,
+      rgba(8, 8, 8, 0.055) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    var(--magenta);
   color: var(--black);
 }
 
@@ -210,6 +289,7 @@
   max-width: 12ch;
   margin-bottom: clamp(3rem, 7vw, 6rem);
   font-size: clamp(3.8rem, 10vw, 10rem);
+  text-shadow: 0.055em 0.055em 0 var(--cyan);
 }
 
 @media (max-width: 54rem) {
@@ -233,6 +313,12 @@
   .gameWrap {
     justify-self: stretch;
   }
+
+  .heroPortal {
+    top: 24%;
+    right: 8%;
+    width: min(46vw, 24rem);
+  }
 }
 
 @media (max-width: 34rem) {
@@ -247,6 +333,13 @@
   .hero h1 {
     font-size: clamp(3rem, 13.8vw, 4rem);
     letter-spacing: -0.07em;
+  }
+
+  .heroPortal {
+    top: 19%;
+    right: -4%;
+    width: 62vw;
+    opacity: 0.45;
   }
 
   .heroFooter {

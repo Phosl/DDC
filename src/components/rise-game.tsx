@@ -6,6 +6,7 @@ import gsap from "gsap";
 import Link from "next/link";
 
 import { GameAudioEngine } from "../lib/game-audio";
+import { drawRiseGameScene } from "../lib/rise-game-visuals";
 import styles from "./rise-game.module.css";
 
 gsap.registerPlugin(useGSAP);
@@ -14,8 +15,11 @@ const GAME_DURATION_MS = 60_000;
 const START_QUOTA = -900;
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
-const CHAPTERS = ["IL FONDO", "L’ATTRITO", "L’ARIA"] as const;
-const CHAPTER_ACCENTS = ["#e7e1d7", "#ff2a78", "#27e0d1"] as const;
+const CHAPTERS = [
+  "CANTO I · GIUDECCA",
+  "CANTO II · DITE",
+  "CANTO III · LE STELLE",
+] as const;
 
 type GamePhase = "intro" | "playing" | "paused" | "result";
 type EntityKind = "noise" | "voice";
@@ -48,6 +52,21 @@ type GameSignal = {
   label: string;
 };
 
+type GameProjectile = {
+  x: number;
+  y: number;
+  speed: number;
+  age: number;
+  consumed: boolean;
+};
+
+type GameBurst = {
+  x: number;
+  y: number;
+  age: number;
+  tone: "noise" | "voice";
+};
+
 type GameRuntime = {
   viewport: Viewport;
   elapsedMs: number;
@@ -58,9 +77,12 @@ type GameRuntime = {
   playerVelocity: number;
   thrusting: boolean;
   entities: GameEntity[];
+  projectiles: GameProjectile[];
+  bursts: GameBurst[];
   nextEntityId: number;
   obstacleCooldown: number;
   voiceCooldown: number;
+  verseCooldown: number;
   breathWarningShown: boolean;
   lastFrameAt: number;
   lastHudAt: number;
@@ -133,9 +155,9 @@ function formatQuota(quota: number) {
 }
 
 function getResultMessage(quota: number) {
-  if (quota >= 140) return "Hai bucato il cielo.";
-  if (quota >= 0) return "Hai trovato aria.";
-  return "Sei ancora sotto. Ma sei ancora vivo.";
+  if (quota >= 140) return "Hai bucato il cielo. Le stelle rispondono.";
+  if (quota >= 0) return "Hai trovato aria. La voce resta.";
+  return "Sei ancora sotto. Ma adesso conosci la via.";
 }
 
 function createRuntime(width = 405, height = 720): GameRuntime {
@@ -149,9 +171,12 @@ function createRuntime(width = 405, height = 720): GameRuntime {
     playerVelocity: 0,
     thrusting: false,
     entities: [],
+    projectiles: [],
+    bursts: [],
     nextEntityId: 0,
     obstacleCooldown: 1.1,
     voiceCooldown: 1.7,
+    verseCooldown: 0,
     breathWarningShown: false,
     lastFrameAt: 0,
     lastHudAt: 0,
@@ -210,6 +235,8 @@ function updateRuntime(
 ) {
   const signals: GameSignal[] = [];
   const { width, height } = runtime.viewport;
+  const playerRadius = clamp(width * 0.037, 13, 19);
+  const playerX = Math.max(68, width * 0.24);
 
   runtime.thrusting = holding && runtime.breath > 0.4;
 
@@ -227,7 +254,7 @@ function updateRuntime(
 
   if (runtime.breath <= 0.2 && !runtime.breathWarningShown) {
     runtime.breathWarningShown = true;
-    signals.push({ tone: "breath", label: "RILASCIA PER RESPIRARE" });
+    signals.push({ tone: "breath", label: "FIATO CORTO — RILASCIA" });
   } else if (runtime.breath > 22) {
     runtime.breathWarningShown = false;
   }
@@ -245,7 +272,6 @@ function updateRuntime(
   runtime.playerVelocity = clamp(runtime.playerVelocity, -300, 270);
   runtime.playerY += runtime.playerVelocity * deltaSeconds;
 
-  const playerRadius = clamp(width * 0.037, 13, 19);
   const topBoundary = Math.max(62, playerRadius * 2.8);
   const bottomBoundary = height - Math.max(68, playerRadius * 3.2);
 
@@ -256,6 +282,26 @@ function updateRuntime(
     runtime.playerY = bottomBoundary;
     runtime.playerVelocity = Math.min(-34, runtime.playerVelocity * -0.25);
   }
+
+  runtime.verseCooldown -= deltaSeconds;
+
+  if (runtime.thrusting && runtime.verseCooldown <= 0) {
+    runtime.projectiles.push({
+      x: playerX + playerRadius * 0.8,
+      y: runtime.playerY - playerRadius * 0.15,
+      speed: Math.max(260, width * 0.78),
+      age: 0,
+      consumed: false,
+    });
+    runtime.verseCooldown = easyMode ? 0.24 : 0.3;
+  }
+
+  for (const projectile of runtime.projectiles) {
+    projectile.age += deltaSeconds;
+    projectile.x += projectile.speed * deltaSeconds;
+  }
+
+  for (const burst of runtime.bursts) burst.age += deltaSeconds;
 
   const ascentRate = runtime.thrusting
     ? easyMode
@@ -282,8 +328,6 @@ function updateRuntime(
     runtime.voiceCooldown = randomBetween(1.75, 2.65);
   }
 
-  const playerX = Math.max(68, width * 0.24);
-
   for (const entity of runtime.entities) {
     entity.age += deltaSeconds;
     entity.x -= entity.speed * deltaSeconds;
@@ -292,6 +336,32 @@ function updateRuntime(
       : Math.sin(entity.age * entity.wobbleSpeed + entity.phase) *
         entity.wobble;
     entity.y = entity.baseY + wobble;
+
+    if (entity.kind === "noise" && !entity.consumed) {
+      for (const projectile of runtime.projectiles) {
+        if (projectile.consumed) continue;
+
+        const verseDeltaX = projectile.x - entity.x;
+        const verseDeltaY = projectile.y - entity.y;
+        const verseHitRadius = entity.radius * 0.76 + 6;
+
+        if (
+          verseDeltaX * verseDeltaX + verseDeltaY * verseDeltaY <=
+          verseHitRadius * verseHitRadius
+        ) {
+          projectile.consumed = true;
+          entity.consumed = true;
+          runtime.bursts.push({
+            x: entity.x,
+            y: entity.y,
+            age: 0,
+            tone: "noise",
+          });
+          signals.push({ tone: "voice", label: "RUMORE SPEZZATO" });
+          break;
+        }
+      }
+    }
 
     const deltaX = playerX - entity.x;
     const deltaY = runtime.playerY - entity.y;
@@ -311,8 +381,20 @@ function updateRuntime(
       if (entity.kind === "voice") {
         runtime.voices += 1;
         runtime.quota = Math.min(480, runtime.quota + 18);
+        runtime.bursts.push({
+          x: entity.x,
+          y: entity.y,
+          age: 0,
+          tone: "voice",
+        });
         signals.push({ tone: "voice", label: "VOCE +1" });
       } else if (easyMode) {
+        runtime.bursts.push({
+          x: entity.x,
+          y: entity.y,
+          age: 0,
+          tone: "voice",
+        });
         signals.push({ tone: "breath", label: "RUMORE SUPERATO" });
       } else {
         const quotaPenalty = 36;
@@ -322,6 +404,12 @@ function updateRuntime(
           270,
           runtime.playerVelocity + 165,
         );
+        runtime.bursts.push({
+          x: entity.x,
+          y: entity.y,
+          age: 0,
+          tone: "noise",
+        });
         signals.push({
           tone: "noise",
           label: `RUMORE −${quotaPenalty} M`,
@@ -333,181 +421,12 @@ function updateRuntime(
   runtime.entities = runtime.entities.filter(
     (entity) => !entity.consumed && entity.x > -entity.radius * 2,
   );
+  runtime.projectiles = runtime.projectiles.filter(
+    (projectile) => !projectile.consumed && projectile.x < width + 32,
+  );
+  runtime.bursts = runtime.bursts.filter((burst) => burst.age < 0.46);
 
   return signals;
-}
-
-function drawBackground(
-  context: CanvasRenderingContext2D,
-  runtime: GameRuntime,
-  reducedMotion: boolean,
-) {
-  const { width, height } = runtime.viewport;
-  const chapterIndex = getChapterIndex(runtime.elapsedMs);
-  const accent = CHAPTER_ACCENTS[chapterIndex];
-  const gradient = context.createLinearGradient(0, 0, 0, height);
-
-  gradient.addColorStop(0, chapterIndex === 2 ? "#071414" : "#090909");
-  gradient.addColorStop(0.58, "#080808");
-  gradient.addColorStop(1, chapterIndex === 1 ? "#210813" : "#101010");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, width, height);
-
-  const gridOffset = ((runtime.quota - START_QUOTA) * 0.75) % 88;
-  context.save();
-  context.strokeStyle = accent;
-  context.globalAlpha = 0.12;
-  context.lineWidth = 1;
-
-  for (let y = -88 + gridOffset; y < height + 88; y += 88) {
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(width, y);
-    context.stroke();
-  }
-
-  context.globalAlpha = 0.07;
-  context.setLineDash([2, 8]);
-  context.beginPath();
-  context.moveTo(width * 0.24, 0);
-  context.lineTo(width * 0.24, height);
-  context.stroke();
-  context.restore();
-
-  const moteCount = reducedMotion ? 8 : 24;
-  const travel = reducedMotion ? 0 : runtime.elapsedMs * 0.018;
-
-  context.save();
-  context.fillStyle = accent;
-  for (let index = 0; index < moteCount; index += 1) {
-    const x = ((index * 83 + 31) % 101) * (width / 100);
-    const y = (index * 97 + travel) % (height + 80) - 40;
-    const radius = index % 4 === 0 ? 1.7 : 0.9;
-    context.globalAlpha = 0.12 + (index % 5) * 0.035;
-    context.beginPath();
-    context.arc(x, y, radius, 0, Math.PI * 2);
-    context.fill();
-  }
-  context.restore();
-}
-
-function drawEntity(
-  context: CanvasRenderingContext2D,
-  entity: GameEntity,
-  reducedMotion: boolean,
-) {
-  context.save();
-  context.translate(entity.x, entity.y);
-
-  if (entity.kind === "noise") {
-    context.rotate(reducedMotion ? entity.rotation : entity.rotation + entity.age * 0.2);
-    context.shadowBlur = reducedMotion ? 0 : 18;
-    context.shadowColor = "#ff2a78";
-    context.fillStyle = "#111111";
-    context.strokeStyle = "#ff2a78";
-    context.lineWidth = 1.5;
-    context.beginPath();
-    context.moveTo(-entity.radius * 0.9, -entity.radius * 0.54);
-    context.lineTo(entity.radius * 0.72, -entity.radius);
-    context.lineTo(entity.radius, entity.radius * 0.48);
-    context.lineTo(-entity.radius * 0.42, entity.radius);
-    context.closePath();
-    context.fill();
-    context.stroke();
-    context.rotate(-(reducedMotion ? entity.rotation : entity.rotation + entity.age * 0.2));
-    context.shadowBlur = 0;
-    context.fillStyle = "rgba(255,255,255,0.76)";
-    context.font = "600 8px ui-monospace, SFMono-Regular, monospace";
-    context.textAlign = "center";
-    context.fillText("RUMORE", 0, entity.radius + 17);
-  } else {
-    context.rotate(Math.PI / 4);
-    context.shadowBlur = reducedMotion ? 0 : 24;
-    context.shadowColor = "#27e0d1";
-    context.fillStyle = "rgba(39,224,209,0.16)";
-    context.strokeStyle = "#27e0d1";
-    context.lineWidth = 2;
-    context.fillRect(
-      -entity.radius * 0.72,
-      -entity.radius * 0.72,
-      entity.radius * 1.44,
-      entity.radius * 1.44,
-    );
-    context.strokeRect(
-      -entity.radius * 0.72,
-      -entity.radius * 0.72,
-      entity.radius * 1.44,
-      entity.radius * 1.44,
-    );
-    context.rotate(-Math.PI / 4);
-    context.shadowBlur = 0;
-    context.fillStyle = "#dffffb";
-    context.font = "700 8px ui-monospace, SFMono-Regular, monospace";
-    context.textAlign = "center";
-    context.fillText("VOCE", 0, entity.radius + 18);
-  }
-
-  context.restore();
-}
-
-function drawPlayer(
-  context: CanvasRenderingContext2D,
-  runtime: GameRuntime,
-  reducedMotion: boolean,
-) {
-  const { width } = runtime.viewport;
-  const x = Math.max(68, width * 0.24);
-  const y = runtime.playerY;
-  const radius = clamp(width * 0.037, 13, 19);
-  const accent = CHAPTER_ACCENTS[getChapterIndex(runtime.elapsedMs)];
-
-  context.save();
-
-  if (runtime.thrusting && !reducedMotion) {
-    const trail = context.createLinearGradient(x, y, x, y + radius * 5.5);
-    trail.addColorStop(0, accent);
-    trail.addColorStop(1, "rgba(255,255,255,0)");
-    context.strokeStyle = trail;
-    context.lineWidth = radius * 0.68;
-    context.lineCap = "round";
-    context.beginPath();
-    context.moveTo(x, y + radius * 0.65);
-    context.lineTo(x, y + radius * 4.7);
-    context.stroke();
-  }
-
-  context.shadowBlur = reducedMotion ? 0 : 30;
-  context.shadowColor = accent;
-  context.fillStyle = "#f5f1e9";
-  context.beginPath();
-  context.arc(x, y, radius, 0, Math.PI * 2);
-  context.fill();
-
-  context.shadowBlur = 0;
-  context.fillStyle = "#080808";
-  context.beginPath();
-  context.moveTo(x, y - radius * 0.5);
-  context.lineTo(x + radius * 0.43, y + radius * 0.35);
-  context.lineTo(x - radius * 0.43, y + radius * 0.35);
-  context.closePath();
-  context.fill();
-  context.restore();
-}
-
-function drawScene(
-  context: CanvasRenderingContext2D,
-  runtime: GameRuntime,
-  reducedMotion: boolean,
-) {
-  const { width, height } = runtime.viewport;
-  context.clearRect(0, 0, width, height);
-  drawBackground(context, runtime, reducedMotion);
-
-  for (const entity of runtime.entities) {
-    drawEntity(context, entity, reducedMotion);
-  }
-
-  drawPlayer(context, runtime, reducedMotion);
 }
 
 export function RiseGame() {
@@ -535,7 +454,7 @@ export function RiseGame() {
   const [audioAvailable, setAudioAvailable] = useState(true);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [announcement, setAnnouncement] = useState(
-    "Gioco pronto. Tieni premuto per salire e rilascia per respirare.",
+    "Cantica Zero pronta. Tieni premuto per salire e lanciare Versi; rilascia per respirare.",
   );
   const [result, setResult] = useState<GameResult | null>(null);
   const [hud, setHud] = useState<HudState>({
@@ -649,7 +568,7 @@ export function RiseGame() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext("2d", { alpha: false });
     if (!context) return;
 
     const resizeCanvas = () => {
@@ -664,6 +583,7 @@ export function RiseGame() {
       canvas.width = Math.round(bounds.width * dpr);
       canvas.height = Math.round(bounds.height * dpr);
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      context.imageSmoothingEnabled = false;
 
       if (previousHeight > 0) {
         const scaleY = bounds.height / previousHeight;
@@ -671,12 +591,24 @@ export function RiseGame() {
         for (const entity of runtime.entities) {
           entity.y *= scaleY;
           entity.baseY *= scaleY;
+          entity.wobble *= scaleY;
         }
+        for (const projectile of runtime.projectiles) projectile.y *= scaleY;
+        for (const burst of runtime.bursts) burst.y *= scaleY;
       }
 
       if (previousWidth > 0) {
         const scaleX = bounds.width / previousWidth;
-        for (const entity of runtime.entities) entity.x *= scaleX;
+        for (const entity of runtime.entities) {
+          entity.x *= scaleX;
+          entity.radius *= scaleX;
+          entity.speed *= scaleX;
+        }
+        for (const projectile of runtime.projectiles) {
+          projectile.x *= scaleX;
+          projectile.speed *= scaleX;
+        }
+        for (const burst of runtime.bursts) burst.x *= scaleX;
       }
 
       runtime.viewport = {
@@ -684,7 +616,12 @@ export function RiseGame() {
         height: bounds.height,
         dpr,
       };
-      drawScene(context, runtime, reducedMotionRef.current);
+      drawRiseGameScene(
+        context,
+        runtime,
+        reducedMotionRef.current,
+        getChapterIndex(runtime.elapsedMs),
+      );
     };
 
     const resizeObserver = new ResizeObserver(resizeCanvas);
@@ -704,6 +641,7 @@ export function RiseGame() {
           0,
           (GAME_DURATION_MS - runtime.elapsedMs) / 1_000,
         );
+        const previousChapterIndex = getChapterIndex(runtime.elapsedMs);
         runtime.lastFrameAt = now;
         runtime.elapsedMs = Math.min(
           GAME_DURATION_MS,
@@ -711,6 +649,15 @@ export function RiseGame() {
         );
 
         const signals: GameSignal[] = [];
+        const currentChapterIndex = getChapterIndex(runtime.elapsedMs);
+
+        if (currentChapterIndex !== previousChapterIndex) {
+          signals.push({
+            tone: "breath",
+            label: CHAPTERS[currentChapterIndex],
+          });
+        }
+
         let remainingSimulationSeconds = Math.min(
           elapsedDeltaSeconds,
           remainingGameSeconds,
@@ -781,7 +728,12 @@ export function RiseGame() {
         runtime.lastFrameAt = now;
       }
 
-      drawScene(context, runtime, reducedMotionRef.current);
+      drawRiseGameScene(
+        context,
+        runtime,
+        reducedMotionRef.current,
+        getChapterIndex(runtime.elapsedMs),
+      );
       animationFrameRef.current =
         phaseRef.current === "playing"
           ? window.requestAnimationFrame(renderFrame)
@@ -925,7 +877,7 @@ export function RiseGame() {
     setPhase("playing");
     setAnnouncement(
       audioReady
-        ? "Partita iniziata. Tieni premuto per salire e rilascia per recuperare fiato."
+        ? "Partita iniziata. Tieni premuto per salire e lanciare Versi. Rilascia per recuperare fiato."
         : "Partita iniziata senza audio: il sound design non è disponibile.",
     );
     window.requestAnimationFrame(() =>
@@ -966,6 +918,12 @@ export function RiseGame() {
       );
       return nextMode;
     });
+
+    if (phaseRef.current === "playing") {
+      window.requestAnimationFrame(() =>
+        canvasRef.current?.focus({ preventScroll: true }),
+      );
+    }
   };
 
   const toggleAudio = () => {
@@ -976,6 +934,11 @@ export function RiseGame() {
       setAudioEnabled(false);
       audioRef.current?.setEnabled(false);
       setAnnouncement("Audio disattivato.");
+      if (phaseRef.current === "playing") {
+        window.requestAnimationFrame(() =>
+          canvasRef.current?.focus({ preventScroll: true }),
+        );
+      }
       return;
     }
 
@@ -987,6 +950,11 @@ export function RiseGame() {
       setAudioEnabled(false);
       setAudioAvailable(false);
       setAnnouncement("Audio non disponibile su questo browser.");
+      if (phaseRef.current === "playing") {
+        window.requestAnimationFrame(() =>
+          canvasRef.current?.focus({ preventScroll: true }),
+        );
+      }
       return;
     }
 
@@ -999,6 +967,11 @@ export function RiseGame() {
     }
 
     setAnnouncement("Audio attivato.");
+    if (phaseRef.current === "playing") {
+      window.requestAnimationFrame(() =>
+        canvasRef.current?.focus({ preventScroll: true }),
+      );
+    }
   };
 
   const handlePointerDown = (
@@ -1023,7 +996,7 @@ export function RiseGame() {
   return (
     <section ref={rootRef} className={styles.game} aria-labelledby="rise-game-title">
       <h2 id="rise-game-title" className={styles.srOnly}>
-        Dall’inferno in su — il gioco della risalita
+        Dall’inferno in su — Cantica Zero
       </h2>
 
       <div className={styles.hud} aria-hidden="true">
@@ -1081,14 +1054,17 @@ export function RiseGame() {
           : "Sound design non disponibile su questo browser."}
       </span>
 
-      <div className={styles.stage}>
+      <div
+        className={styles.stage}
+        data-cantica={CHAPTERS.indexOf(hud.chapter)}
+      >
         <canvas
           ref={canvasRef}
           className={styles.canvas}
           role="application"
-          aria-roledescription="gioco d’azione"
+          aria-roledescription="gioco arcade di risalita"
           tabIndex={phase === "playing" ? 0 : -1}
-          aria-label="Area di gioco. Tieni premuto, oppure usa Spazio o Freccia su, per salire. Rilascia per recuperare fiato."
+          aria-label="Area di gioco. Tieni premuto, oppure usa Spazio o Freccia su, per salire e lanciare Versi. Rilascia per recuperare fiato."
           aria-describedby="rise-game-instructions rise-game-accessibility"
           aria-keyshortcuts="Space ArrowUp P"
           onPointerDown={handlePointerDown}
@@ -1105,6 +1081,15 @@ export function RiseGame() {
           <span>{Math.min(3, CHAPTERS.indexOf(hud.chapter) + 1)} / 3</span>
         </div>
 
+        <div className={styles.canticaRail} aria-hidden="true">
+          {CHAPTERS.map((chapter, index) => (
+            <span
+              key={chapter}
+              data-active={index <= CHAPTERS.indexOf(hud.chapter)}
+            />
+          ))}
+        </div>
+
         <div
           ref={feedbackRef}
           className={styles.feedback}
@@ -1117,18 +1102,18 @@ export function RiseGame() {
         {phase === "intro" ? (
           <div className={`${styles.overlay} ${styles.introOverlay}`}>
             <div ref={introRef} className={styles.overlayContent}>
-              <p className={styles.kicker}>SEI SOTTO QUOTA ZERO</p>
-              <h3>Dall’inferno in su.</h3>
+              <p className={styles.kicker}>CANTO 00 / SOTTO QUOTA ZERO</p>
+              <h3>Nel mezzo del rumore.</h3>
               <p className={styles.overlayCopy}>
-                Tieni premuto per salire. Lascia per respirare. Evita il
-                rumore, trova la tua voce.
+                Hai perso la via, non la voce. Tieni premuto: sali e lancia
+                Versi. Rilascia: respira.
               </p>
               <button
                 type="button"
                 className={styles.primaryButton}
                 onClick={startGame}
               >
-                Comincia
+                Entra nel primo cerchio
               </button>
               <p className={styles.modeNote}>
                 Modalità assistita: {easyMode ? "attiva" : "non attiva"}
@@ -1144,7 +1129,7 @@ export function RiseGame() {
               className={styles.overlayContent}
               tabIndex={-1}
             >
-              <p className={styles.kicker}>PRENDI FIATO</p>
+              <p className={styles.kicker}>TRA UN CANTO E L’ALTRO</p>
               <h3>Partita in pausa.</h3>
               <button
                 type="button"
@@ -1171,13 +1156,14 @@ export function RiseGame() {
               className={styles.overlayContent}
               tabIndex={-1}
             >
-              <p className={styles.kicker}>LA TUA RISALITA</p>
+              <p className={styles.kicker}>FINE DELLA CANTICA</p>
               <p className={styles.resultQuota}>
                 QUOTA {formatQuota(result.quota)}
               </p>
               <h3>{result.message}</h3>
               <p className={styles.overlayCopy}>
-                Hai raccolto {result.voices} {result.voices === 1 ? "voce" : "voci"}.
+                Ogni risalita è un altro canto. Hai raccolto {result.voices}{" "}
+                {result.voices === 1 ? "voce" : "voci"}.
               </p>
               <button
                 type="button"
@@ -1195,15 +1181,17 @@ export function RiseGame() {
       </div>
 
       <p id="rise-game-instructions" className={styles.instructions}>
-        <span>TOUCH / HOLD</span>
+        <span>HOLD / SALI + VERSI</span>
         <span>SPAZIO / ↑</span>
         <span>P PER PAUSA</span>
       </p>
 
       <p id="rise-game-accessibility" className={styles.srOnly}>
-        Gioco d’azione visivo: gli ostacoli Rumore e i frammenti Voce si
-        muovono da destra verso sinistra. In modalità assistita il Rumore non
-        penalizza, le Voci vengono raccolte automaticamente e hai più fiato.
+        Gioco arcade visivo in tre Canti: Giudecca, Dite e Le Stelle. Gli
+        ostacoli Rumore e i frammenti Voce si muovono da destra verso sinistra.
+        Tenendo premuto lanci Versi che possono spezzare il Rumore. In modalità
+        assistita il Rumore non penalizza, le Voci vengono raccolte
+        automaticamente e hai più fiato.
       </p>
 
       <dl className={styles.srOnly} aria-label="Stato corrente della partita">

@@ -40,12 +40,12 @@ const gameStructuredData = {
   "@type": "VideoGame",
   "@id": absoluteUrl("/gioco#game"),
   name: "Dall’inferno in su",
-  alternateName: "Il gioco della risalita",
+  alternateName: "Cantica Zero — Il gioco della risalita",
   description: siteConfig.gameDescription,
   url: absoluteUrl("/gioco"),
   image: absoluteUrl("/gioco/opengraph-image"),
   inLanguage: siteConfig.language,
-  genre: ["Arcade", "Musicale"],
+  genre: ["Arcade", "Musicale", "Pixel art"],
   gamePlatform: "Web browser",
   playMode: "SinglePlayer",
   isAccessibleForFree: true,
@@ -69,19 +69,25 @@ export default function GamePage() {
 
       <main>
         <section className={styles.hero} aria-labelledby="game-page-title">
+          <div className={styles.heroPortal} aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <b>00</b>
+          </div>
           <div className={styles.heroGrid} aria-hidden="true">
             <span />
             <span />
             <span />
           </div>
           <div className={styles.heroContent}>
-            <p className={styles.eyebrow}>DDC / GHETTO SUPERSTAR / 001</p>
+            <p className={styles.eyebrow}>DDC / CANTICA ZERO / ARCADE 001</p>
             <h1 id="game-page-title">
               Dall’inferno <em>in su.</em>
             </h1>
             <div className={styles.heroFooter}>
-              <p>60 secondi. Una sola direzione.</p>
-              <a href="#partita">Inizia la risalita ↓</a>
+              <p>Tre Canti. Sessanta secondi. Una sola direzione.</p>
+              <a href="#partita">Entra nella selva ↓</a>
             </div>
           </div>
         </section>
@@ -92,18 +98,19 @@ export default function GamePage() {
           aria-labelledby="rules-title"
         >
           <div className={styles.rules}>
-            <p className={styles.sectionIndex}>01 / LA RISALITA</p>
-            <h2 id="rules-title">Scendi. Respira. Risali.</h2>
+            <p className={styles.sectionIndex}>01 / LE REGOLE DEL VIANDANTE</p>
+            <h2 id="rules-title">Attraversa i tre Canti.</h2>
             <p className={styles.rulesLead}>
-              Non devi arrivare perfetto. Devi arrivare ancora vivo.
+              Hai perso la via, non la voce. Dal fondo, attraverso Dite, verso
+              le stelle.
             </p>
             <ol>
               <li>
                 <span>01</span>
                 <p>
                   <strong>Sali</strong>
-                  Tieni premuto sullo schermo. Da tastiera usa Spazio o Freccia
-                  su.
+                  Tieni premuto per salire e lanciare Versi. Da tastiera usa
+                  Spazio o Freccia su.
                 </p>
               </li>
               <li>
@@ -116,8 +123,9 @@ export default function GamePage() {
               <li>
                 <span>03</span>
                 <p>
-                  <strong>Trova la voce</strong>
-                  Evita il Rumore e raccogli i frammenti luminosi.
+                  <strong>Spezza il rumore</strong>
+                  I Versi aprono la strada. Raccogli i frammenti Voce per
+                  guadagnare quota.
                 </p>
               </li>
             </ol>
@@ -129,8 +137,8 @@ export default function GamePage() {
         </section>
 
         <section className={styles.outro} aria-labelledby="outro-title">
-          <p className={styles.sectionIndex}>02 / DOPO QUOTA ZERO</p>
-          <h2 id="outro-title">Non è una fuga. È una risalita.</h2>
+          <p className={styles.sectionIndex}>02 / FUORI DALLA SELVA</p>
+          <h2 id="outro-title">E quindi uscimmo a riveder le stelle.</h2>
           <Link href="/">Torna al viaggio</Link>
         </section>
       </main>

@@ -5,7 +5,8 @@
   --game-line: rgba(244, 240, 232, 0.2);
   --game-magenta: #ff2a78;
   --game-cyan: #27e0d1;
-  width: min(100%, 34rem);
+  --game-acid: #d7ff46;
+  width: min(100%, 39rem);
   margin-inline: auto;
   color: var(--game-ink);
   font-family: var(--font-sans, Arial, Helvetica, sans-serif);
@@ -26,18 +27,23 @@
 .hud {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  margin-bottom: 0.65rem;
-  border: 1px solid var(--game-line);
-  background: var(--game-line);
+  margin: 0 0.35rem 0.85rem 0;
+  border: 2px solid var(--game-ink);
+  background: var(--game-black);
+  box-shadow: 0.35rem 0.35rem 0 rgba(255, 42, 120, 0.38);
 }
 
 .hudMetric {
   display: grid;
   gap: 0.22rem;
   min-width: 0;
-  padding: 0.65rem 0.7rem 0.58rem;
+  padding: 0.72rem 0.75rem 0.66rem;
+  border-right: 1px solid var(--game-line);
   background: var(--game-black);
+}
+
+.hudMetric:last-child {
+  border-right: 0;
 }
 
 .hudMetric span,
@@ -62,7 +68,8 @@
 .hudMetric strong {
   overflow: hidden;
   color: var(--game-ink);
-  font-size: clamp(0.8rem, 3vw, 1rem);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(0.82rem, 3vw, 1.05rem);
   font-variant-numeric: tabular-nums;
   font-weight: 650;
   letter-spacing: -0.02em;
@@ -74,15 +81,15 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.45rem;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.85rem;
 }
 
 .toolButton,
 .primaryButton,
 .secondaryButton {
   min-height: 2.75rem;
-  border: 1px solid currentColor;
-  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-radius: 0;
   font: inherit;
   font-size: 0.72rem;
   font-weight: 700;
@@ -100,13 +107,14 @@
 .toolButton {
   padding-inline: 0.9rem;
   border-color: var(--game-line);
-  background: transparent;
+  background: var(--game-black);
   color: var(--game-ink);
 }
 
 .toolButton[aria-pressed="true"] {
-  border-color: var(--game-cyan);
-  color: var(--game-cyan);
+  border-color: var(--game-acid);
+  color: var(--game-acid);
+  box-shadow: 3px 3px 0 rgba(215, 255, 70, 0.22);
 }
 
 .toolButton:disabled {
@@ -124,12 +132,14 @@
 .stage {
   position: relative;
   width: 100%;
-  height: min(74svh, 49rem);
+  height: min(76svh, 51rem);
   min-height: 32rem;
   overflow: hidden;
-  border: 1px solid var(--game-line);
-  border-radius: 1.2rem;
+  border: 3px solid var(--game-ink);
+  border-radius: 0;
   background: var(--game-black);
+  box-shadow: 0.6rem 0.6rem 0 rgba(39, 224, 209, 0.22);
+  contain: paint;
   isolation: isolate;
 }
 
@@ -137,6 +147,9 @@
   display: block;
   width: 100%;
   height: 100%;
+  background: var(--game-black);
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
   touch-action: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -150,14 +163,48 @@
 .chapter {
   position: absolute;
   z-index: 2;
-  top: 1rem;
-  right: 1rem;
-  left: 1rem;
+  top: 0.75rem;
+  right: 2.35rem;
+  left: 0.75rem;
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  color: rgba(244, 240, 232, 0.7);
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(244, 240, 232, 0.42);
+  background: rgba(8, 8, 8, 0.82);
+  color: var(--game-ink);
   pointer-events: none;
+}
+
+.canticaRail {
+  position: absolute;
+  z-index: 2;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.32rem;
+  border: 1px solid rgba(244, 240, 232, 0.42);
+  background: rgba(8, 8, 8, 0.82);
+  pointer-events: none;
+}
+
+.canticaRail span {
+  width: 0.48rem;
+  height: 0.48rem;
+  background: rgba(244, 240, 232, 0.22);
+}
+
+.canticaRail span[data-active="true"] {
+  background: var(--game-acid);
+}
+
+.stage[data-cantica="1"] .canticaRail span[data-active="true"] {
+  background: var(--game-magenta);
+}
+
+.stage[data-cantica="2"] .canticaRail span[data-active="true"] {
+  background: var(--game-cyan);
 }
 
 .feedback {
@@ -167,9 +214,10 @@
   left: 50%;
   max-width: calc(100% - 3rem);
   padding: 0.68rem 0.9rem;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  background: rgba(8, 8, 8, 0.84);
+  border: 2px solid currentColor;
+  border-radius: 0;
+  background: rgba(8, 8, 8, 0.94);
+  box-shadow: 4px 4px 0 rgba(244, 240, 232, 0.14);
   color: var(--game-ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.7rem;
@@ -203,20 +251,24 @@
 
 .introOverlay {
   background:
-    radial-gradient(circle at 50% 70%, rgba(255, 42, 120, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(8, 8, 8, 0.7), rgba(8, 8, 8, 0.94));
+    repeating-linear-gradient(
+      0deg,
+      rgba(244, 240, 232, 0.035) 0,
+      rgba(244, 240, 232, 0.035) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    rgba(8, 8, 8, 0.86);
 }
 
 .pauseOverlay {
-  background: rgba(8, 8, 8, 0.84);
-  backdrop-filter: blur(10px);
+  background: rgba(8, 8, 8, 0.9);
 }
 
 .resultOverlay {
   background:
-    radial-gradient(circle at 50% 22%, rgba(39, 224, 209, 0.2), transparent 42%),
-    rgba(8, 8, 8, 0.9);
-  backdrop-filter: blur(6px);
+    linear-gradient(90deg, transparent 49%, rgba(39, 224, 209, 0.08) 49% 51%, transparent 51%),
+    rgba(8, 8, 8, 0.92);
 }
 
 .overlayContent {
@@ -224,6 +276,10 @@
   width: min(100%, 24rem);
   flex-direction: column;
   align-items: center;
+  padding: clamp(1.2rem, 5vw, 2rem);
+  border: 2px solid var(--game-ink);
+  background: rgba(8, 8, 8, 0.9);
+  box-shadow: 0.55rem 0.55rem 0 rgba(255, 42, 120, 0.42);
 }
 
 .overlayContent:focus {
@@ -237,7 +293,7 @@
 
 .kicker {
   margin: 0 0 1.1rem;
-  color: var(--game-cyan);
+  color: var(--game-acid);
 }
 
 .overlayContent h3 {
@@ -249,6 +305,7 @@
   letter-spacing: -0.075em;
   line-height: 0.88;
   text-wrap: balance;
+  text-shadow: 4px 4px 0 rgba(255, 42, 120, 0.62);
 }
 
 .overlayCopy {
@@ -263,16 +320,17 @@
 .primaryButton,
 .secondaryButton {
   display: inline-grid;
-  width: min(100%, 15rem);
+  width: min(100%, 18rem);
   place-items: center;
   padding: 0.9rem 1.3rem;
   text-decoration: none;
 }
 
 .primaryButton {
-  border-color: var(--game-ink);
-  background: var(--game-ink);
+  border-color: var(--game-acid);
+  background: var(--game-acid);
   color: var(--game-black);
+  box-shadow: 4px 4px 0 var(--game-magenta);
 }
 
 .primaryButton:hover,
@@ -286,6 +344,7 @@
   border-color: var(--game-line);
   background: transparent;
   color: var(--game-ink);
+  box-shadow: 3px 3px 0 rgba(244, 240, 232, 0.14);
 }
 
 .secondaryButton:hover,
@@ -303,7 +362,7 @@
 
 .resultQuota {
   margin: 0 0 0.9rem;
-  color: var(--game-cyan);
+  color: var(--game-acid);
   font-size: clamp(1.1rem, 5vw, 1.7rem);
   font-variant-numeric: tabular-nums;
   font-weight: 760;
@@ -344,11 +403,24 @@
 
   .stage {
     min-height: 30rem;
-    border-radius: 0.9rem;
+    border-radius: 0;
+    box-shadow: 0.4rem 0.4rem 0 rgba(39, 224, 209, 0.22);
+  }
+
+  .chapter {
+    font-size: 0.53rem;
+    letter-spacing: 0.08em;
   }
 
   .instructions {
     justify-content: flex-start;
+  }
+}
+
+@media (max-height: 38rem) and (orientation: landscape) {
+  .stage {
+    height: 86svh;
+    min-height: 0;
   }
 }
 
