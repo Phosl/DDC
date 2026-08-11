@@ -5,6 +5,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import Link from "next/link";
 
+import { GameAudioEngine } from "../lib/game-audio";
 import styles from "./rise-game.module.css";
 
 gsap.registerPlugin(useGSAP);
@@ -525,9 +526,13 @@ export function RiseGame() {
   const reducedMotionRef = useRef(reducedMotion);
   const feedbackIdRef = useRef(0);
   const animationFrameRef = useRef<number | null>(null);
+  const audioRef = useRef<GameAudioEngine | null>(null);
+  const audioEnabledRef = useRef(true);
 
   const [phase, setPhase] = useState<GamePhase>("intro");
   const [easyMode, setEasyMode] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioAvailable, setAudioAvailable] = useState(true);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [announcement, setAnnouncement] = useState(
     "Gioco pronto. Tieni premuto per salire e rilascia per respirare.",
@@ -552,6 +557,14 @@ export function RiseGame() {
   useEffect(() => {
     reducedMotionRef.current = reducedMotion;
   }, [reducedMotion]);
+
+  useEffect(
+    () => () => {
+      audioRef.current?.dispose();
+      audioRef.current = null;
+    },
+    [],
+  );
 
   useGSAP(
     () => {
@@ -719,10 +732,13 @@ export function RiseGame() {
         }
 
         for (const signal of signals) {
+          audioRef.current?.playSignal(signal.tone);
           feedbackIdRef.current += 1;
           setFeedback({ ...signal, id: feedbackIdRef.current });
           setAnnouncement(signal.label);
         }
+
+        audioRef.current?.setThrusting(runtime.thrusting);
 
         if (now - runtime.lastHudAt >= 100) {
           runtime.lastHudAt = now;
@@ -740,6 +756,7 @@ export function RiseGame() {
 
         if (runtime.elapsedMs >= GAME_DURATION_MS) {
           holdingRef.current = false;
+          runtime.thrusting = false;
           phaseRef.current = "result";
           const finalResult = {
             quota: Math.round(runtime.quota),
@@ -755,6 +772,7 @@ export function RiseGame() {
             breath: Math.round(runtime.breath),
           }));
           setPhase("result");
+          audioRef.current?.finish(finalResult.quota >= 0);
           setAnnouncement(
             `Tempo scaduto. Quota ${formatQuota(finalResult.quota)}. ${finalResult.message}`,
           );
@@ -791,6 +809,7 @@ export function RiseGame() {
       if (phaseRef.current !== "playing") return;
 
       runtimeRef.current.thrusting = false;
+      audioRef.current?.pause();
       phaseRef.current = "paused";
       setPhase("paused");
       setAnnouncement(message);
@@ -807,6 +826,7 @@ export function RiseGame() {
           pauseCurrentGame("Partita in pausa.");
         } else if (phaseRef.current === "paused") {
           runtimeRef.current.lastFrameAt = performance.now();
+          if (audioEnabledRef.current) audioRef.current?.resume();
           phaseRef.current = "playing";
           setPhase("playing");
           setAnnouncement("Partita ripresa.");
@@ -876,6 +896,19 @@ export function RiseGame() {
   }, []);
 
   const startGame = () => {
+    let audioReady = true;
+
+    if (audioEnabledRef.current) {
+      audioRef.current ??= new GameAudioEngine();
+      audioReady = audioRef.current.begin();
+
+      if (!audioReady) {
+        audioEnabledRef.current = false;
+        setAudioEnabled(false);
+        setAudioAvailable(false);
+      }
+    }
+
     resetRuntime(runtimeRef.current);
     holdingRef.current = false;
     activeInputsRef.current.clear();
@@ -891,7 +924,9 @@ export function RiseGame() {
     });
     setPhase("playing");
     setAnnouncement(
-      "Partita iniziata. Tieni premuto per salire e rilascia per recuperare fiato.",
+      audioReady
+        ? "Partita iniziata. Tieni premuto per salire e rilascia per recuperare fiato."
+        : "Partita iniziata senza audio: il sound design non è disponibile.",
     );
     window.requestAnimationFrame(() =>
       canvasRef.current?.focus({ preventScroll: true }),
@@ -904,11 +939,13 @@ export function RiseGame() {
 
     if (phaseRef.current === "playing") {
       runtimeRef.current.thrusting = false;
+      audioRef.current?.pause();
       phaseRef.current = "paused";
       setPhase("paused");
       setAnnouncement("Partita in pausa.");
     } else if (phaseRef.current === "paused") {
       runtimeRef.current.lastFrameAt = performance.now();
+      if (audioEnabledRef.current) audioRef.current?.resume();
       phaseRef.current = "playing";
       setPhase("playing");
       setAnnouncement("Partita ripresa.");
@@ -929,6 +966,39 @@ export function RiseGame() {
       );
       return nextMode;
     });
+  };
+
+  const toggleAudio = () => {
+    const nextEnabled = !audioEnabledRef.current;
+
+    if (!nextEnabled) {
+      audioEnabledRef.current = false;
+      setAudioEnabled(false);
+      audioRef.current?.setEnabled(false);
+      setAnnouncement("Audio disattivato.");
+      return;
+    }
+
+    audioRef.current ??= new GameAudioEngine();
+    const isAvailable = audioRef.current.setEnabled(true);
+
+    if (!isAvailable) {
+      audioEnabledRef.current = false;
+      setAudioEnabled(false);
+      setAudioAvailable(false);
+      setAnnouncement("Audio non disponibile su questo browser.");
+      return;
+    }
+
+    audioEnabledRef.current = true;
+    setAudioEnabled(true);
+
+    if (phaseRef.current === "playing") {
+      audioRef.current.resume();
+      audioRef.current.setThrusting(runtimeRef.current.thrusting);
+    }
+
+    setAnnouncement("Audio attivato.");
   };
 
   const handlePointerDown = (
@@ -979,6 +1049,17 @@ export function RiseGame() {
         <button
           type="button"
           className={styles.toolButton}
+          aria-label="Audio del gioco"
+          aria-describedby="rise-game-audio-description"
+          aria-pressed={audioEnabled}
+          onClick={toggleAudio}
+          disabled={!audioAvailable}
+        >
+          Audio {audioAvailable ? (audioEnabled ? "on" : "off") : "n/d"}
+        </button>
+        <button
+          type="button"
+          className={styles.toolButton}
           aria-pressed={easyMode}
           onClick={toggleEasyMode}
         >
@@ -993,6 +1074,12 @@ export function RiseGame() {
           {phase === "paused" ? "Riprendi" : "Pausa"}
         </button>
       </div>
+
+      <span id="rise-game-audio-description" className={styles.srOnly}>
+        {audioAvailable
+          ? "Sound design procedurale attivabile e disattivabile."
+          : "Sound design non disponibile su questo browser."}
+      </span>
 
       <div className={styles.stage}>
         <canvas

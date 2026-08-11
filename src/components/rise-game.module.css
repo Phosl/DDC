@@ -71,6 +71,7 @@
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.45rem;
   margin-bottom: 0.65rem;
@@ -328,6 +329,10 @@
 }
 
 @media (max-width: 27rem) {
+  .toolButton {
+    padding-inline: 0.7rem;
+  }
+
   .hudMetric {
     padding-inline: 0.45rem;
   }
@@ -359,4 +364,3 @@
     backdrop-filter: none;
   }
 }
-
