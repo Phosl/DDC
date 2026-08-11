@@ -1,20 +1,59 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { SITE_ORIGIN, siteConfig } from "@/lib/site";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_ORIGIN),
+  applicationName: siteConfig.projectName,
   title: {
-    default: "Davide Del Carmen — Ghetto Superstar",
-    template: "%s — Davide Del Carmen",
+    default: siteConfig.title,
+    template: `%s — ${siteConfig.artistName}`,
   },
-  description:
-    "Ghetto Superstar è una risalita: musica, immagini e un’esperienza interattiva di Davide Del Carmen.",
+  description: siteConfig.description,
+  authors: [{ name: siteConfig.artistName, url: "/" }],
+  creator: siteConfig.artistName,
+  publisher: siteConfig.artistName,
+  category: "music",
+  alternates: {
+    canonical: "/",
+  },
+  formatDetection: {
+    address: false,
+    email: false,
+    telephone: false,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
-    title: "Davide Del Carmen — Ghetto Superstar",
-    description: "Non è una fuga. È una risalita.",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    url: "/",
+    siteName: `${siteConfig.projectName} — ${siteConfig.artistName}`,
     type: "website",
-    locale: "it_IT",
+    locale: siteConfig.locale,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: [
+      {
+        url: "/opengraph-image",
+        alt: siteConfig.socialImageAlt,
+      },
+    ],
   },
 };
 

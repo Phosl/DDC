@@ -3,18 +3,68 @@ import Link from "next/link";
 
 import { RiseGame } from "@/components/rise-game";
 import { SiteHeader } from "@/components/site-header";
+import { StructuredData } from "@/components/structured-data";
+import { absoluteUrl, siteConfig } from "@/lib/site";
 
 import styles from "./gioco.module.css";
 
 export const metadata: Metadata = {
-  title: "Dall’inferno in su — Il gioco",
-  description:
-    "Sessanta secondi per superare quota zero. Evita il rumore, trova la tua voce e comincia la risalita.",
+  title: siteConfig.gameTitle,
+  description: siteConfig.gameDescription,
+  alternates: {
+    canonical: "/gioco",
+  },
+  openGraph: {
+    title: `${siteConfig.gameTitle} — ${siteConfig.artistName}`,
+    description: siteConfig.gameDescription,
+    url: "/gioco",
+    siteName: `${siteConfig.projectName} — ${siteConfig.artistName}`,
+    type: "website",
+    locale: siteConfig.locale,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteConfig.gameTitle} — ${siteConfig.artistName}`,
+    description: siteConfig.gameDescription,
+    images: [
+      {
+        url: "/gioco/opengraph-image",
+        alt: siteConfig.gameSocialImageAlt,
+      },
+    ],
+  },
+};
+
+const gameStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "@id": absoluteUrl("/gioco#game"),
+  name: "Dall’inferno in su",
+  alternateName: "Il gioco della risalita",
+  description: siteConfig.gameDescription,
+  url: absoluteUrl("/gioco"),
+  image: absoluteUrl("/gioco/opengraph-image"),
+  inLanguage: siteConfig.language,
+  genre: ["Arcade", "Musicale"],
+  gamePlatform: "Web browser",
+  playMode: "SinglePlayer",
+  isAccessibleForFree: true,
+  author: {
+    "@type": "Person",
+    "@id": absoluteUrl("/#artist"),
+    name: siteConfig.artistName,
+  },
+  isPartOf: {
+    "@type": "CreativeWork",
+    "@id": absoluteUrl("/#project"),
+    name: siteConfig.projectName,
+  },
 };
 
 export default function GamePage() {
   return (
     <div className={styles.page}>
+      <StructuredData data={gameStructuredData} id="game-structured-data" />
       <SiteHeader variant="light" />
 
       <main>
@@ -87,4 +137,3 @@ export default function GamePage() {
     </div>
   );
 }
-

@@ -3,13 +3,59 @@ import Link from "next/link";
 
 import { HomeMotion } from "@/components/home-motion";
 import { SiteHeader } from "@/components/site-header";
+import { StructuredData } from "@/components/structured-data";
 import { featuredTracks, journeyChapters, projectFacts } from "@/content/project";
+import { absoluteUrl, siteConfig } from "@/lib/site";
 
 import styles from "./home.module.css";
 
+const homeStructuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": absoluteUrl("/#website"),
+      url: absoluteUrl(),
+      name: `${siteConfig.projectName} — ${siteConfig.artistName}`,
+      alternateName: siteConfig.artistAlternateName,
+      description: siteConfig.description,
+      inLanguage: siteConfig.language,
+      publisher: {
+        "@id": absoluteUrl("/#artist"),
+      },
+    },
+    {
+      "@type": "Person",
+      "@id": absoluteUrl("/#artist"),
+      name: siteConfig.artistName,
+      alternateName: siteConfig.artistAlternateName,
+      description: `Artista e autore del progetto musicale ${siteConfig.projectName}.`,
+      url: absoluteUrl(),
+      image: absoluteUrl("/media/hero-editorial.jpeg"),
+    },
+    {
+      "@type": "CreativeWork",
+      "@id": absoluteUrl("/#project"),
+      name: siteConfig.projectName,
+      description: siteConfig.description,
+      url: absoluteUrl("/#progetto"),
+      image: absoluteUrl("/media/portrait-full.jpeg"),
+      inLanguage: siteConfig.language,
+      creator: {
+        "@id": absoluteUrl("/#artist"),
+      },
+      isPartOf: {
+        "@id": absoluteUrl("/#website"),
+      },
+    },
+  ],
+};
+
 export default function HomePage() {
   return (
-    <main className={styles.page} data-home id="contenuto">
+    <>
+      <StructuredData data={homeStructuredData} id="project-structured-data" />
+      <main className={styles.page} data-home id="contenuto">
       <a className="skip-link" href="#viaggio">
         Vai al contenuto
       </a>
@@ -231,6 +277,7 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-    </main>
+      </main>
+    </>
   );
 }
