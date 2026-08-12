@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import type { PublicRelease } from "@/content/project";
+import { ReleaseShader } from "@/components/release-shader";
 
 import styles from "./latest-releases.module.css";
 
@@ -63,12 +64,19 @@ export function LatestReleases({ releases, catalogUrl }: LatestReleasesProps) {
                   height={640}
                   sizes="(max-width: 900px) 7rem, (max-width: 1440px) 16vw, 14rem"
                 />
+                <ReleaseShader
+                  imageSrc={release.cover}
+                  mode={release.visualMode}
+                  className={styles.shaderCanvas}
+                />
                 <span aria-hidden="true">
                   {String(index + 1).padStart(2, "0")}
                 </span>
               </div>
               <div className={styles.copy}>
-                <p>{release.releaseType}</p>
+                <p>
+                  {release.releaseType} / {release.visualLabel}
+                </p>
                 <h4>{release.title}</h4>
                 <div className={styles.meta}>
                   <time dateTime={release.releaseDate}>

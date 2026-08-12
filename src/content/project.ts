@@ -20,6 +20,8 @@ export type PublicRelease = {
   releaseDate: string;
   spotifyUrl: string;
   cover: string;
+  visualMode: "reaction" | "echo" | "fracture";
+  visualLabel: string;
 };
 
 export const navigation = [
@@ -74,6 +76,8 @@ export const latestReleases: readonly PublicRelease[] = [
     releaseDate: "2026-06-09",
     spotifyUrl: "https://open.spotify.com/album/0JP6Q9iB3VnMfJ3wAnNPJw",
     cover: "/media/releases/chimica.webp",
+    visualMode: "reaction",
+    visualLabel: "Reazione",
   },
   {
     title: "Già da un po'",
@@ -81,6 +85,8 @@ export const latestReleases: readonly PublicRelease[] = [
     releaseDate: "2025-12-10",
     spotifyUrl: "https://open.spotify.com/album/490lmNZDpRvvHECQP8B3vr",
     cover: "/media/releases/gia-da-un-po.webp",
+    visualMode: "echo",
+    visualLabel: "Persistenza",
   },
   {
     title: "A3 La Morte Può Attendere, Pt. 2",
@@ -88,6 +94,8 @@ export const latestReleases: readonly PublicRelease[] = [
     releaseDate: "2023-12-12",
     spotifyUrl: "https://open.spotify.com/album/3TjItLVghP1DEMSAkyrVSK",
     cover: "/media/releases/a3-la-morte-puo-attendere-pt-2.webp",
+    visualMode: "fracture",
+    visualLabel: "Rinvio",
   },
 ];
 
