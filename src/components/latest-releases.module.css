@@ -1,0 +1,210 @@
+.releases {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.header p,
+.copy p {
+  margin: 0;
+  color: var(--cyan);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.header h3 {
+  margin: 0.4rem 0 0;
+  font-family: var(--display);
+  font-size: clamp(1.8rem, 3.1vw, 3rem);
+  font-weight: 850;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.catalogAction {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.4rem;
+  padding: 0.75rem 1rem;
+  background: var(--paper-bright);
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: background 180ms ease;
+}
+
+.catalogAction:hover,
+.catalogAction:focus-visible {
+  background: var(--cyan);
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+  margin: 0;
+  background: var(--line);
+  list-style: none;
+}
+
+.release {
+  position: relative;
+  display: grid;
+  height: 100%;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.release::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--magenta);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 220ms ease;
+}
+
+.release:hover::after,
+.release:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.cover {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: var(--ink-soft);
+}
+
+.cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 220ms ease, transform 300ms ease;
+}
+
+.release:hover .cover img,
+.release:focus-visible .cover img {
+  filter: contrast(1.08);
+  transform: scale(1.025);
+}
+
+.cover > span {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper-bright);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.copy {
+  display: flex;
+  min-width: 0;
+  min-height: 9.5rem;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.copy h4 {
+  margin: 0.75rem 0 1.5rem;
+  font-size: clamp(1rem, 1.6vw, 1.3rem);
+  font-weight: 550;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.meta {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.meta span {
+  color: var(--cyan);
+  font-size: 1rem;
+}
+
+.note {
+  max-width: 31rem;
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .catalogAction {
+    width: 100%;
+  }
+
+  .list {
+    grid-template-columns: 1fr;
+  }
+
+  .release {
+    grid-template-columns: 7rem minmax(0, 1fr);
+    grid-template-rows: 1fr;
+  }
+
+  .copy {
+    min-height: 7rem;
+  }
+
+  .copy h4 {
+    margin-block: 0.5rem 1rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .release {
+    grid-template-columns: 6.25rem minmax(0, 1fr);
+  }
+
+  .copy {
+    padding: 0.85rem;
+  }
+
+  .meta {
+    font-size: 0.52rem;
+  }
+}

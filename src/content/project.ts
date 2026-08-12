@@ -14,6 +14,14 @@ export type Track = {
   note?: string;
 };
 
+export type PublicRelease = {
+  title: string;
+  releaseType: "Singolo" | "Album";
+  releaseDate: string;
+  spotifyUrl: string;
+  cover: string;
+};
+
 export const navigation = [
   { label: "Il viaggio", href: "/#viaggio" },
   { label: "Progetto", href: "/#progetto" },
@@ -57,6 +65,30 @@ export const featuredTracks: Track[] = [
   { number: "09", title: "Ancora Vivo" },
   { number: "15", title: "Dopo di te" },
   { number: "17", title: "Pensami", note: "Outro" },
+];
+
+export const latestReleases: readonly PublicRelease[] = [
+  {
+    title: "Chimica",
+    releaseType: "Singolo",
+    releaseDate: "2026-06-09",
+    spotifyUrl: "https://open.spotify.com/album/0JP6Q9iB3VnMfJ3wAnNPJw",
+    cover: "/media/releases/chimica.webp",
+  },
+  {
+    title: "Già da un po'",
+    releaseType: "Singolo",
+    releaseDate: "2025-12-10",
+    spotifyUrl: "https://open.spotify.com/album/490lmNZDpRvvHECQP8B3vr",
+    cover: "/media/releases/gia-da-un-po.webp",
+  },
+  {
+    title: "A3 La Morte Può Attendere, Pt. 2",
+    releaseType: "Album",
+    releaseDate: "2023-12-12",
+    spotifyUrl: "https://open.spotify.com/album/3TjItLVghP1DEMSAkyrVSK",
+    cover: "/media/releases/a3-la-morte-puo-attendere-pt-2.webp",
+  },
 ];
 
 export const projectFacts = [

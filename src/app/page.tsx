@@ -2,9 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { HomeMotion } from "@/components/home-motion";
+import { LatestReleases } from "@/components/latest-releases";
 import { SiteHeader } from "@/components/site-header";
 import { StructuredData } from "@/components/structured-data";
-import { featuredTracks, journeyChapters, projectFacts } from "@/content/project";
+import {
+  featuredTracks,
+  journeyChapters,
+  latestReleases,
+  projectFacts,
+} from "@/content/project";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
 import styles from "./home.module.css";
@@ -49,6 +55,21 @@ const homeStructuredData = {
         "@id": absoluteUrl("/#website"),
       },
     },
+    ...latestReleases.map((release) => ({
+      "@type": "MusicAlbum",
+      "@id": `${release.spotifyUrl}#release`,
+      name: release.title,
+      datePublished: release.releaseDate,
+      url: release.spotifyUrl,
+      image: absoluteUrl(release.cover),
+      albumReleaseType:
+        release.releaseType === "Singolo"
+          ? "https://schema.org/SingleRelease"
+          : "https://schema.org/AlbumRelease",
+      byArtist: {
+        "@id": absoluteUrl("/#artist"),
+      },
+    })),
   ],
 };
 
@@ -216,25 +237,10 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
-            <div className={styles.spotifyPanel} data-reveal>
-              <div className={styles.spotifyCopy}>
-                <small>Catalogo pubblico</small>
-                <strong>Davide Del Carmen su Spotify</strong>
-              </div>
-              <a
-                className={styles.spotifyAction}
-                href={siteConfig.artistProfiles.spotify}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Ascolta Davide Del Carmen su Spotify, si apre in una nuova scheda"
-              >
-                Ascolta su Spotify <span aria-hidden="true">↗</span>
-              </a>
-            </div>
-            <p className={styles.privateNote} data-reveal>
-              Ghetto Superstar è ancora in lavorazione. Su Spotify trovi i brani già
-              pubblicati.
-            </p>
+            <LatestReleases
+              releases={latestReleases}
+              catalogUrl={siteConfig.artistProfiles.spotify}
+            />
           </div>
         </div>
 
