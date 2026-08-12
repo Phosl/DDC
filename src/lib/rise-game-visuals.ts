@@ -1,3 +1,10 @@
+import {
+  getRiseGameVisualAssets,
+  sampleRiseGamePlayerClip,
+  type RiseGamePlayerClipName,
+  type RiseGameVisualAssets,
+} from "./rise-game-visual-assets";
+
 type PixelContext =
   | CanvasRenderingContext2D
   | OffscreenCanvasRenderingContext2D;
@@ -83,6 +90,7 @@ const LOGICAL_PIXEL_SIZE = 2;
 const MIN_LOGICAL_WIDTH = 144;
 const MAX_LOGICAL_WIDTH = 288;
 const PARALLAX_SPEEDS = [3, 7, 13] as const;
+const CHAPTER_DURATION_SECONDS = 20;
 const BAYER_4 = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
@@ -733,6 +741,93 @@ function drawParallax(
   }
 }
 
+function drawAuthoredLayer(
+  context: PixelContext,
+  image: HTMLImageElement,
+  outputWidth: number,
+  outputHeight: number,
+  chapterSeconds: number,
+  reducedMotion: boolean,
+  speed: number,
+  heightRatio: number,
+  cover: boolean,
+) {
+  const sourceWidth = Math.max(1, image.naturalWidth);
+  const sourceHeight = Math.max(1, image.naturalHeight);
+  const travel = reducedMotion ? 0 : speed * CHAPTER_DURATION_SECONDS;
+  const minimumWidth = outputWidth + travel + 24;
+  const scale = cover
+    ? Math.max(outputHeight / sourceHeight, minimumWidth / sourceWidth)
+    : Math.max(
+        (outputHeight * heightRatio) / sourceHeight,
+        minimumWidth / sourceWidth,
+      );
+  const drawWidth = Math.ceil(sourceWidth * scale);
+  const drawHeight = Math.ceil(sourceHeight * scale);
+  const maximumOffset = Math.max(0, drawWidth - outputWidth);
+  const centeredStart = Math.max(0, (maximumOffset - travel) / 2);
+  const offset = reducedMotion
+    ? maximumOffset / 2
+    : Math.min(maximumOffset, centeredStart + chapterSeconds * speed);
+  const x = -Math.round(offset);
+  const y = cover
+    ? Math.round((outputHeight - drawHeight) / 2)
+    : outputHeight - drawHeight;
+
+  context.drawImage(image, x, y, drawWidth, drawHeight);
+}
+
+function drawAuthoredParallax(
+  context: PixelContext,
+  assets: RiseGameVisualAssets,
+  chapterIndex: number,
+  width: number,
+  height: number,
+  elapsedMs: number,
+  reducedMotion: boolean,
+) {
+  const chapter = assets.chapters[chapterIndex];
+  const chapterSeconds = clamp(
+    elapsedMs / 1_000 - chapterIndex * CHAPTER_DURATION_SECONDS,
+    0,
+    CHAPTER_DURATION_SECONDS,
+  );
+
+  drawAuthoredLayer(
+    context,
+    chapter.far,
+    width,
+    height,
+    chapterSeconds,
+    reducedMotion,
+    PARALLAX_SPEEDS[0],
+    1,
+    true,
+  );
+  drawAuthoredLayer(
+    context,
+    chapter.middle,
+    width,
+    height,
+    chapterSeconds,
+    reducedMotion,
+    PARALLAX_SPEEDS[1],
+    0.56,
+    false,
+  );
+  drawAuthoredLayer(
+    context,
+    chapter.near,
+    width,
+    height,
+    chapterSeconds,
+    reducedMotion,
+    PARALLAX_SPEEDS[2],
+    0.44,
+    false,
+  );
+}
+
 function drawAltitudeMarker(
   context: PixelContext,
   width: number,
@@ -845,8 +940,79 @@ function drawPlayer(
   scaleY: number,
   reducedMotion: boolean,
   cameraX: number,
+  authoredAssets: RiseGameVisualAssets | null,
 ) {
   const playerX = Math.max(68, runtime.viewport.width * 0.24);
+
+  if (authoredAssets) {
+    const recentHit = runtime.bursts.find((burst) => {
+      if (burst.tone !== "noise" || (burst.age ?? 1) >= 0.38) return false;
+      return (
+        Math.abs(burst.x - playerX) < runtime.viewport.width * 0.13 &&
+        Math.abs(burst.y - runtime.playerY) < runtime.viewport.height * 0.13
+      );
+    });
+    const recentVerse = runtime.projectiles.find(
+      (projectile) =>
+        !projectile.consumed &&
+        (projectile.age ?? 1) < 0.16 &&
+        projectile.x < playerX + runtime.viewport.width * 0.25,
+    );
+    let clipName: RiseGamePlayerClipName = "run";
+    let clipAge = runtime.elapsedMs / 1_000;
+
+    if (recentHit) {
+      clipName = "hit";
+      clipAge = recentHit.age ?? 0;
+    } else if (recentVerse) {
+      clipName = "verse";
+      clipAge = recentVerse.age ?? 0;
+    } else if (runtime.thrusting) {
+      clipName = "rise";
+    } else if (runtime.elapsedMs <= 0 || runtime.elapsedMs >= 60_000) {
+      clipName = "idle";
+    }
+
+    const clip = authoredAssets.player[clipName];
+    const frame = sampleRiseGamePlayerClip(clip, clipAge, reducedMotion);
+    const height = clip.height;
+    const width = Math.max(
+      1,
+      Math.round((height * frame.sourceWidth) / frame.sourceHeight),
+    );
+    const x = Math.round(playerX * scaleX) - Math.round(width / 2) + cameraX;
+    const y = Math.round(runtime.playerY * scaleY) - Math.round(height * clip.anchorY);
+
+    context.drawImage(
+      frame.image,
+      frame.sourceX,
+      frame.sourceY,
+      frame.sourceWidth,
+      frame.sourceHeight,
+      x,
+      y,
+      width,
+      height,
+    );
+
+    if (clipName === "rise" && !reducedMotion) {
+      context.globalAlpha = 0.14;
+      context.drawImage(
+        frame.image,
+        frame.sourceX,
+        frame.sourceY,
+        frame.sourceWidth,
+        frame.sourceHeight,
+        x,
+        y + 2,
+        width,
+        height,
+      );
+      context.globalAlpha = 1;
+    }
+    return;
+  }
+
   const movingQuickly = Math.abs(runtime.playerVelocity) > 95;
   const frame = runtime.thrusting
     ? 2
@@ -887,6 +1053,7 @@ export function drawRiseGameScene(
   const safeChapterIndex = clamp(Math.trunc(chapterIndex), 0, 2);
   const palette = CHAPTER_PALETTES[safeChapterIndex];
   const cache = getRendererCache(context);
+  const authoredAssets = getRiseGameVisualAssets();
 
   ensureSizedCache(cache, viewportWidth, viewportHeight);
 
@@ -896,14 +1063,28 @@ export function drawRiseGameScene(
   const cameraX = getCameraOffset(runtime, reducedMotion);
 
   resetContext(bufferContext);
-  bufferContext.drawImage(cache.backgrounds[safeChapterIndex].canvas, 0, 0);
-  drawParallax(
-    bufferContext,
-    cache,
-    safeChapterIndex,
-    runtime.elapsedMs,
-    reducedMotion,
-  );
+  if (authoredAssets) {
+    bufferContext.fillStyle = palette.void;
+    bufferContext.fillRect(0, 0, cache.logicalWidth, cache.logicalHeight);
+    drawAuthoredParallax(
+      bufferContext,
+      authoredAssets,
+      safeChapterIndex,
+      cache.logicalWidth,
+      cache.logicalHeight,
+      runtime.elapsedMs,
+      reducedMotion,
+    );
+  } else {
+    bufferContext.drawImage(cache.backgrounds[safeChapterIndex].canvas, 0, 0);
+    drawParallax(
+      bufferContext,
+      cache,
+      safeChapterIndex,
+      runtime.elapsedMs,
+      reducedMotion,
+    );
+  }
   drawAltitudeMarker(
     bufferContext,
     cache.logicalWidth,
@@ -946,6 +1127,7 @@ export function drawRiseGameScene(
     scaleY,
     reducedMotion,
     cameraX,
+    authoredAssets,
   );
 
   context.save();

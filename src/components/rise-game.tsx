@@ -6,6 +6,7 @@ import gsap from "gsap";
 import Link from "next/link";
 
 import { GameAudioEngine } from "../lib/game-audio";
+import { preloadRiseGameVisualAssets } from "../lib/rise-game-visual-assets";
 import { drawRiseGameScene } from "../lib/rise-game-visuals";
 import styles from "./rise-game.module.css";
 
@@ -627,6 +628,18 @@ export function RiseGame() {
     const resizeObserver = new ResizeObserver(resizeCanvas);
     resizeObserver.observe(canvas);
     resizeCanvas();
+    let cancelled = false;
+
+    void preloadRiseGameVisualAssets().then((assets) => {
+      if (cancelled || !assets) return;
+      const runtime = runtimeRef.current;
+      drawRiseGameScene(
+        context,
+        runtime,
+        reducedMotionRef.current,
+        getChapterIndex(runtime.elapsedMs),
+      );
+    });
 
     const renderFrame = (now: number) => {
       const runtime = runtimeRef.current;
@@ -743,6 +756,7 @@ export function RiseGame() {
     animationFrameRef.current = window.requestAnimationFrame(renderFrame);
 
     return () => {
+      cancelled = true;
       resizeObserver.disconnect();
       if (animationFrameRef.current !== null) {
         window.cancelAnimationFrame(animationFrameRef.current);

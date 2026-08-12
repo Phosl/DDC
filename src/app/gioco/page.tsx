@@ -101,8 +101,8 @@ export default function GamePage() {
             <p className={styles.sectionIndex}>01 / LE REGOLE DEL VIANDANTE</p>
             <h2 id="rules-title">Attraversa i tre Canti.</h2>
             <p className={styles.rulesLead}>
-              Hai perso la via, non la voce. Dal fondo, attraverso Dite, verso
-              le stelle.
+              Guida Davide dal ghiaccio di Giudecca, oltre le mura di Dite,
+              fino all’aria aperta. Hai perso la via, non la voce.
             </p>
             <ol>
               <li>
