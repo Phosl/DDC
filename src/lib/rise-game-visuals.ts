@@ -51,6 +51,7 @@ export type RiseGameVisualRuntime = {
   viewport: RiseGameVisualViewport;
   elapsedMs: number;
   quota: number;
+  playerX: number;
   playerY: number;
   playerVelocity: number;
   thrusting: boolean;
@@ -91,6 +92,7 @@ const MIN_LOGICAL_WIDTH = 144;
 const MAX_LOGICAL_WIDTH = 288;
 const PARALLAX_SPEEDS = [3, 7, 13] as const;
 const CHAPTER_DURATION_SECONDS = 20;
+const CHAPTER_TRANSITION_SECONDS = 2;
 const BAYER_4 = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
@@ -698,30 +700,34 @@ function ensureSizedCache(
     buildChapterBackground(chapterIndex, logicalWidth, logicalHeight),
   );
 
-  const tileWidth = Math.max(96, Math.ceil(logicalWidth * 0.72));
+  const layerWidth = logicalWidth;
   cache.parallax = [0, 1, 2].map((chapterIndex) =>
     [0, 1, 2].map((layer) =>
       buildParallaxTile(
         chapterIndex,
         layer,
-        tileWidth,
+        layerWidth,
         logicalHeight,
       ),
     ),
   );
 }
 
-function drawRepeatedTile(
+function drawRepeatedVerticalTile(
   context: PixelContext,
   surface: PixelSurface,
-  outputWidth: number,
+  outputHeight: number,
   offset: number,
 ) {
-  const tileWidth = surface.canvas.width;
-  const normalizedOffset = -positiveModulo(Math.floor(offset), tileWidth);
+  const tileHeight = surface.canvas.height;
+  const normalizedOffset = positiveModulo(Math.floor(offset), tileHeight);
 
-  for (let x = normalizedOffset - tileWidth; x < outputWidth; x += tileWidth) {
-    context.drawImage(surface.canvas, x, 0);
+  for (
+    let y = normalizedOffset - tileHeight;
+    y < outputHeight;
+    y += tileHeight
+  ) {
+    context.drawImage(surface.canvas, 0, y);
   }
 }
 
@@ -729,15 +735,21 @@ function drawParallax(
   context: PixelContext,
   cache: RendererCache,
   chapterIndex: number,
-  elapsedMs: number,
+  chapterSeconds: number,
   reducedMotion: boolean,
 ) {
-  const timeSeconds = elapsedMs / 1_000;
   const layers = cache.parallax[chapterIndex];
 
   for (let layer = 0; layer < layers.length; layer += 1) {
-    const offset = reducedMotion ? 0 : timeSeconds * PARALLAX_SPEEDS[layer];
-    drawRepeatedTile(context, layers[layer], cache.logicalWidth, offset);
+    const offset = reducedMotion
+      ? 0
+      : chapterSeconds * PARALLAX_SPEEDS[layer];
+    drawRepeatedVerticalTile(
+      context,
+      layers[layer],
+      cache.logicalHeight,
+      offset,
+    );
   }
 }
 
@@ -755,26 +767,30 @@ function drawAuthoredLayer(
   const sourceWidth = Math.max(1, image.naturalWidth);
   const sourceHeight = Math.max(1, image.naturalHeight);
   const travel = reducedMotion ? 0 : speed * CHAPTER_DURATION_SECONDS;
-  const minimumWidth = outputWidth + travel + 24;
+  const minimumHeight = outputHeight + travel + 24;
   const scale = cover
-    ? Math.max(outputHeight / sourceHeight, minimumWidth / sourceWidth)
+    ? Math.max(outputWidth / sourceWidth, minimumHeight / sourceHeight)
     : Math.max(
+        outputWidth / sourceWidth,
         (outputHeight * heightRatio) / sourceHeight,
-        minimumWidth / sourceWidth,
       );
   const drawWidth = Math.ceil(sourceWidth * scale);
   const drawHeight = Math.ceil(sourceHeight * scale);
-  const maximumOffset = Math.max(0, drawWidth - outputWidth);
-  const centeredStart = Math.max(0, (maximumOffset - travel) / 2);
+  const maximumOffset = Math.max(0, drawHeight - outputHeight);
   const offset = reducedMotion
     ? maximumOffset / 2
-    : Math.min(maximumOffset, centeredStart + chapterSeconds * speed);
-  const x = -Math.round(offset);
-  const y = cover
-    ? Math.round((outputHeight - drawHeight) / 2)
-    : outputHeight - drawHeight;
+    : Math.max(0, maximumOffset - chapterSeconds * speed);
+  const x = Math.round((outputWidth - drawWidth) / 2);
 
+  if (cover) {
+    context.drawImage(image, x, -Math.round(offset), drawWidth, drawHeight);
+    return;
+  }
+
+  const verticalTravel = reducedMotion ? 0 : chapterSeconds * speed;
+  const y = Math.round(outputHeight - drawHeight + verticalTravel);
   context.drawImage(image, x, y, drawWidth, drawHeight);
+  context.drawImage(image, x, y - outputHeight, drawWidth, drawHeight);
 }
 
 function drawAuthoredParallax(
@@ -783,15 +799,10 @@ function drawAuthoredParallax(
   chapterIndex: number,
   width: number,
   height: number,
-  elapsedMs: number,
+  chapterSeconds: number,
   reducedMotion: boolean,
 ) {
   const chapter = assets.chapters[chapterIndex];
-  const chapterSeconds = clamp(
-    elapsedMs / 1_000 - chapterIndex * CHAPTER_DURATION_SECONDS,
-    0,
-    CHAPTER_DURATION_SECONDS,
-  );
 
   drawAuthoredLayer(
     context,
@@ -825,6 +836,110 @@ function drawAuthoredParallax(
     PARALLAX_SPEEDS[2],
     0.44,
     false,
+  );
+}
+
+function drawChapterPlate(
+  context: PixelContext,
+  cache: RendererCache,
+  assets: RiseGameVisualAssets | null,
+  chapterIndex: number,
+  chapterSeconds: number,
+  reducedMotion: boolean,
+  yOffset: number,
+) {
+  const width = cache.logicalWidth;
+  const height = cache.logicalHeight;
+  const palette = CHAPTER_PALETTES[chapterIndex];
+
+  context.save();
+  context.translate(0, Math.round(yOffset));
+  context.beginPath();
+  context.rect(0, 0, width, height);
+  context.clip();
+  context.fillStyle = palette.void;
+  context.fillRect(0, 0, width, height);
+
+  if (assets) {
+    drawAuthoredParallax(
+      context,
+      assets,
+      chapterIndex,
+      width,
+      height,
+      chapterSeconds,
+      reducedMotion,
+    );
+  } else {
+    context.drawImage(cache.backgrounds[chapterIndex].canvas, 0, 0);
+    drawParallax(
+      context,
+      cache,
+      chapterIndex,
+      chapterSeconds,
+      reducedMotion,
+    );
+  }
+
+  context.restore();
+}
+
+function drawVerticalWorld(
+  context: PixelContext,
+  cache: RendererCache,
+  assets: RiseGameVisualAssets | null,
+  chapterIndex: number,
+  elapsedMs: number,
+  reducedMotion: boolean,
+) {
+  const localSeconds = clamp(
+    elapsedMs / 1_000 - chapterIndex * CHAPTER_DURATION_SECONDS,
+    0,
+    CHAPTER_DURATION_SECONDS,
+  );
+  const transitionStartsAt =
+    CHAPTER_DURATION_SECONDS - CHAPTER_TRANSITION_SECONDS;
+  const isTransitioning =
+    !reducedMotion && chapterIndex < 2 && localSeconds > transitionStartsAt;
+
+  if (!isTransitioning) {
+    drawChapterPlate(
+      context,
+      cache,
+      assets,
+      chapterIndex,
+      localSeconds,
+      reducedMotion,
+      0,
+    );
+    return;
+  }
+
+  const rawProgress = clamp(
+    (localSeconds - transitionStartsAt) / CHAPTER_TRANSITION_SECONDS,
+    0,
+    1,
+  );
+  const progress = rawProgress * rawProgress * (3 - 2 * rawProgress);
+  const splitY = Math.round(progress * cache.logicalHeight);
+
+  drawChapterPlate(
+    context,
+    cache,
+    assets,
+    chapterIndex + 1,
+    0,
+    false,
+    splitY - cache.logicalHeight,
+  );
+  drawChapterPlate(
+    context,
+    cache,
+    assets,
+    chapterIndex,
+    transitionStartsAt,
+    false,
+    splitY,
   );
 }
 
@@ -881,8 +996,13 @@ function drawProjectiles(
       : Math.floor(((projectile.age ?? 0) * 10) % cache.sprites.verses.length);
     const sprite = cache.sprites.verses[frame];
     const x = Math.round(projectile.x * scaleX) + cameraX;
-    const y = Math.round(projectile.y * scaleY) - 3;
-    context.drawImage(sprite.canvas, x, y);
+    const y = Math.round(projectile.y * scaleY);
+
+    context.save();
+    context.translate(x, y);
+    context.rotate(-Math.PI / 2);
+    context.drawImage(sprite.canvas, -6, -3);
+    context.restore();
   }
 }
 
@@ -942,7 +1062,7 @@ function drawPlayer(
   cameraX: number,
   authoredAssets: RiseGameVisualAssets | null,
 ) {
-  const playerX = Math.max(68, runtime.viewport.width * 0.24);
+  const playerX = runtime.playerX;
 
   if (authoredAssets) {
     const recentHit = runtime.bursts.find((burst) => {
@@ -952,21 +1072,12 @@ function drawPlayer(
         Math.abs(burst.y - runtime.playerY) < runtime.viewport.height * 0.13
       );
     });
-    const recentVerse = runtime.projectiles.find(
-      (projectile) =>
-        !projectile.consumed &&
-        (projectile.age ?? 1) < 0.16 &&
-        projectile.x < playerX + runtime.viewport.width * 0.25,
-    );
     let clipName: RiseGamePlayerClipName = "run";
     let clipAge = runtime.elapsedMs / 1_000;
 
     if (recentHit) {
       clipName = "hit";
       clipAge = recentHit.age ?? 0;
-    } else if (recentVerse) {
-      clipName = "verse";
-      clipAge = recentVerse.age ?? 0;
     } else if (runtime.thrusting) {
       clipName = "rise";
     } else if (runtime.elapsedMs <= 0 || runtime.elapsedMs >= 60_000) {
@@ -1063,28 +1174,16 @@ export function drawRiseGameScene(
   const cameraX = getCameraOffset(runtime, reducedMotion);
 
   resetContext(bufferContext);
-  if (authoredAssets) {
-    bufferContext.fillStyle = palette.void;
-    bufferContext.fillRect(0, 0, cache.logicalWidth, cache.logicalHeight);
-    drawAuthoredParallax(
-      bufferContext,
-      authoredAssets,
-      safeChapterIndex,
-      cache.logicalWidth,
-      cache.logicalHeight,
-      runtime.elapsedMs,
-      reducedMotion,
-    );
-  } else {
-    bufferContext.drawImage(cache.backgrounds[safeChapterIndex].canvas, 0, 0);
-    drawParallax(
-      bufferContext,
-      cache,
-      safeChapterIndex,
-      runtime.elapsedMs,
-      reducedMotion,
-    );
-  }
+  bufferContext.fillStyle = palette.void;
+  bufferContext.fillRect(0, 0, cache.logicalWidth, cache.logicalHeight);
+  drawVerticalWorld(
+    bufferContext,
+    cache,
+    authoredAssets,
+    safeChapterIndex,
+    runtime.elapsedMs,
+    reducedMotion,
+  );
   drawAltitudeMarker(
     bufferContext,
     cache.logicalWidth,

@@ -37,6 +37,7 @@ type GameEntity = {
   kind: EntityKind;
   x: number;
   y: number;
+  baseX: number;
   baseY: number;
   radius: number;
   speed: number;
@@ -74,6 +75,7 @@ type GameRuntime = {
   quota: number;
   breath: number;
   voices: number;
+  playerX: number;
   playerY: number;
   playerVelocity: number;
   thrusting: boolean;
@@ -168,7 +170,8 @@ function createRuntime(width = 405, height = 720): GameRuntime {
     quota: START_QUOTA,
     breath: 100,
     voices: 0,
-    playerY: height * 0.62,
+    playerX: width * 0.5,
+    playerY: height * 0.78,
     playerVelocity: 0,
     thrusting: false,
     entities: [],
@@ -199,27 +202,38 @@ function spawnEntity(
   easyMode: boolean,
 ) {
   const { width, height } = runtime.viewport;
-  const safeTop = Math.max(76, height * 0.13);
-  const safeBottom = Math.min(height - 72, height * 0.86);
+  const safeLeft = Math.max(42, width * 0.12);
+  const safeRight = Math.min(width - 42, width * 0.88);
   const radius =
     kind === "noise"
       ? clamp(width * randomBetween(0.05, 0.075), 18, 34)
       : clamp(width * 0.038, 13, 20);
-  const baseY = randomBetween(safeTop, safeBottom);
+  const wobble =
+    kind === "noise" ? randomBetween(7, 14) : randomBetween(5, 10);
+  const playerRadius = clamp(width * 0.037, 13, 19);
+  const reachableHalfWidth =
+    kind === "noise" ? radius * 0.48 : playerRadius * 0.72;
+  const baseX = clamp(
+    runtime.playerX + randomBetween(-reachableHalfWidth, reachableHalfWidth),
+    safeLeft,
+    safeRight,
+  );
+  const baseY = -radius - randomBetween(8, 48);
 
   runtime.entities.push({
     id: runtime.nextEntityId,
     kind,
-    x: width + radius + randomBetween(4, 42),
+    x: baseX,
     y: baseY,
+    baseX,
     baseY,
     radius,
     speed:
-      width / randomBetween(easyMode ? 4.7 : 3.8, easyMode ? 5.4 : 4.5) +
+      height / randomBetween(easyMode ? 4.7 : 3.8, easyMode ? 5.4 : 4.5) +
       randomBetween(14, 30),
     age: 0,
     phase: randomBetween(0, Math.PI * 2),
-    wobble: kind === "noise" ? randomBetween(8, 20) : randomBetween(5, 12),
+    wobble,
     wobbleSpeed: randomBetween(1.2, 2.4),
     rotation: randomBetween(-0.8, 0.8),
     consumed: false,
@@ -237,7 +251,7 @@ function updateRuntime(
   const signals: GameSignal[] = [];
   const { width, height } = runtime.viewport;
   const playerRadius = clamp(width * 0.037, 13, 19);
-  const playerX = Math.max(68, width * 0.24);
+  const playerX = runtime.playerX;
 
   runtime.thrusting = holding && runtime.breath > 0.4;
 
@@ -273,24 +287,24 @@ function updateRuntime(
   runtime.playerVelocity = clamp(runtime.playerVelocity, -300, 270);
   runtime.playerY += runtime.playerVelocity * deltaSeconds;
 
-  const topBoundary = Math.max(62, playerRadius * 2.8);
+  const topBoundary = Math.max(74, height * 0.42);
   const bottomBoundary = height - Math.max(68, playerRadius * 3.2);
 
   if (runtime.playerY < topBoundary) {
     runtime.playerY = topBoundary;
-    runtime.playerVelocity = Math.max(40, runtime.playerVelocity * -0.28);
+    runtime.playerVelocity = Math.max(0, runtime.playerVelocity);
   } else if (runtime.playerY > bottomBoundary) {
     runtime.playerY = bottomBoundary;
-    runtime.playerVelocity = Math.min(-34, runtime.playerVelocity * -0.25);
+    runtime.playerVelocity = Math.min(0, runtime.playerVelocity);
   }
 
   runtime.verseCooldown -= deltaSeconds;
 
   if (runtime.thrusting && runtime.verseCooldown <= 0) {
     runtime.projectiles.push({
-      x: playerX + playerRadius * 0.8,
-      y: runtime.playerY - playerRadius * 0.15,
-      speed: Math.max(260, width * 0.78),
+      x: playerX,
+      y: runtime.playerY - playerRadius * 0.9,
+      speed: Math.max(340, height * 0.72),
       age: 0,
       consumed: false,
     });
@@ -299,7 +313,7 @@ function updateRuntime(
 
   for (const projectile of runtime.projectiles) {
     projectile.age += deltaSeconds;
-    projectile.x += projectile.speed * deltaSeconds;
+    projectile.y -= projectile.speed * deltaSeconds;
   }
 
   for (const burst of runtime.bursts) burst.age += deltaSeconds;
@@ -331,12 +345,13 @@ function updateRuntime(
 
   for (const entity of runtime.entities) {
     entity.age += deltaSeconds;
-    entity.x -= entity.speed * deltaSeconds;
+    entity.baseY += entity.speed * deltaSeconds;
+    entity.y = entity.baseY;
     const wobble = reducedMotion
       ? 0
       : Math.sin(entity.age * entity.wobbleSpeed + entity.phase) *
         entity.wobble;
-    entity.y = entity.baseY + wobble;
+    entity.x = entity.baseX + wobble;
 
     if (entity.kind === "noise" && !entity.consumed) {
       for (const projectile of runtime.projectiles) {
@@ -373,8 +388,7 @@ function updateRuntime(
     const assistedVoicePickup =
       easyMode &&
       entity.kind === "voice" &&
-      entity.x <= playerX + playerRadius &&
-      entity.x >= playerX - entity.radius;
+      entity.y + entity.radius >= runtime.playerY - playerRadius;
 
     if (!entity.consumed && (hasCollision || assistedVoicePickup)) {
       entity.consumed = true;
@@ -420,10 +434,10 @@ function updateRuntime(
   }
 
   runtime.entities = runtime.entities.filter(
-    (entity) => !entity.consumed && entity.x > -entity.radius * 2,
+    (entity) => !entity.consumed && entity.y < height + entity.radius * 2,
   );
   runtime.projectiles = runtime.projectiles.filter(
-    (projectile) => !projectile.consumed && projectile.x < width + 32,
+    (projectile) => !projectile.consumed && projectile.y > -32,
   );
   runtime.bursts = runtime.bursts.filter((burst) => burst.age < 0.46);
 
@@ -455,7 +469,7 @@ export function RiseGame() {
   const [audioAvailable, setAudioAvailable] = useState(true);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [announcement, setAnnouncement] = useState(
-    "Cantica Zero pronta. Tieni premuto per salire e lanciare Versi; rilascia per respirare.",
+    "Cantica Zero pronta. Parti dal fondo: tieni premuto per salire e lanciare Versi verso l’alto; rilascia per respirare.",
   );
   const [result, setResult] = useState<GameResult | null>(null);
   const [hud, setHud] = useState<HudState>({
@@ -589,27 +603,49 @@ export function RiseGame() {
       if (previousHeight > 0) {
         const scaleY = bounds.height / previousHeight;
         runtime.playerY *= scaleY;
+        runtime.playerVelocity *= scaleY;
         for (const entity of runtime.entities) {
           entity.y *= scaleY;
           entity.baseY *= scaleY;
-          entity.wobble *= scaleY;
+          entity.speed *= scaleY;
         }
-        for (const projectile of runtime.projectiles) projectile.y *= scaleY;
+        for (const projectile of runtime.projectiles) {
+          projectile.y *= scaleY;
+          projectile.speed *= scaleY;
+        }
         for (const burst of runtime.bursts) burst.y *= scaleY;
       }
 
       if (previousWidth > 0) {
         const scaleX = bounds.width / previousWidth;
+        runtime.playerX *= scaleX;
         for (const entity of runtime.entities) {
           entity.x *= scaleX;
+          entity.baseX *= scaleX;
           entity.radius *= scaleX;
-          entity.speed *= scaleX;
+          entity.wobble *= scaleX;
         }
-        for (const projectile of runtime.projectiles) {
-          projectile.x *= scaleX;
-          projectile.speed *= scaleX;
-        }
+        for (const projectile of runtime.projectiles) projectile.x *= scaleX;
         for (const burst of runtime.bursts) burst.x *= scaleX;
+      }
+
+      const playerRadius = clamp(bounds.width * 0.037, 13, 19);
+      const topBoundary = Math.max(74, bounds.height * 0.42);
+      const bottomBoundary =
+        bounds.height - Math.max(68, playerRadius * 3.2);
+      runtime.playerX = clamp(runtime.playerX, playerRadius, bounds.width - playerRadius);
+      runtime.playerY = clamp(runtime.playerY, topBoundary, bottomBoundary);
+      for (const entity of runtime.entities) {
+        entity.baseX = clamp(
+          entity.baseX,
+          entity.radius,
+          bounds.width - entity.radius,
+        );
+        entity.x = clamp(
+          entity.x,
+          entity.radius,
+          bounds.width - entity.radius,
+        );
       }
 
       runtime.viewport = {
@@ -1078,7 +1114,7 @@ export function RiseGame() {
           role="application"
           aria-roledescription="gioco arcade di risalita"
           tabIndex={phase === "playing" ? 0 : -1}
-          aria-label="Area di gioco. Tieni premuto, oppure usa Spazio o Freccia su, per salire e lanciare Versi. Rilascia per recuperare fiato."
+          aria-label="Area di gioco verticale. Tieni premuto, oppure usa Spazio o Freccia su, per risalire i gironi e lanciare Versi verso l’alto. Rilascia per recuperare fiato."
           aria-describedby="rise-game-instructions rise-game-accessibility"
           aria-keyshortcuts="Space ArrowUp P"
           onPointerDown={handlePointerDown}
@@ -1119,8 +1155,8 @@ export function RiseGame() {
               <p className={styles.kicker}>CANTO 00 / SOTTO QUOTA ZERO</p>
               <h3>Nel mezzo del rumore.</h3>
               <p className={styles.overlayCopy}>
-                Hai perso la via, non la voce. Tieni premuto: sali e lancia
-                Versi. Rilascia: respira.
+                Parti dal fondo. Tieni premuto: risali i gironi e lancia Versi
+                verso l’alto. Rilascia: respira.
               </p>
               <button
                 type="button"
@@ -1202,10 +1238,10 @@ export function RiseGame() {
 
       <p id="rise-game-accessibility" className={styles.srOnly}>
         Gioco arcade visivo in tre Canti: Giudecca, Dite e Le Stelle. Gli
-        ostacoli Rumore e i frammenti Voce si muovono da destra verso sinistra.
-        Tenendo premuto lanci Versi che possono spezzare il Rumore. In modalità
-        assistita il Rumore non penalizza, le Voci vengono raccolte
-        automaticamente e hai più fiato.
+        ostacoli Rumore e i frammenti Voce scendono dall’alto mentre Davide
+        risale i gironi. Tenendo premuto lanci Versi verso l’alto, che possono
+        spezzare il Rumore. In modalità assistita il Rumore non penalizza, le
+        Voci vengono raccolte automaticamente e hai più fiato.
       </p>
 
       <dl className={styles.srOnly} aria-label="Stato corrente della partita">

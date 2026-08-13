@@ -86,8 +86,8 @@ export default function GamePage() {
               Dall’inferno <em>in su.</em>
             </h1>
             <div className={styles.heroFooter}>
-              <p>Tre Canti. Sessanta secondi. Una sola direzione.</p>
-              <a href="#partita">Entra nella selva ↓</a>
+              <p>Tre gironi. Sessanta secondi. Dal fondo alle stelle.</p>
+              <a href="#partita">Inizia dal fondo ↓</a>
             </div>
           </div>
         </section>
@@ -101,8 +101,8 @@ export default function GamePage() {
             <p className={styles.sectionIndex}>01 / LE REGOLE DEL VIANDANTE</p>
             <h2 id="rules-title">Attraversa i tre Canti.</h2>
             <p className={styles.rulesLead}>
-              Guida Davide dal ghiaccio di Giudecca, oltre le mura di Dite,
-              fino all’aria aperta. Hai perso la via, non la voce.
+              Guida Davide dal fondo di Giudecca, sali oltre le mura di Dite
+              e raggiungi le stelle. Hai perso la via, non la voce.
             </p>
             <ol>
               <li>
