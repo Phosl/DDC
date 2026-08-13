@@ -7,13 +7,13 @@ export const siteConfig = {
   title: "Davide Del Carmen — Ghetto Superstar",
   description:
     "Ghetto Superstar è il progetto musicale di Davide Del Carmen: una risalita tra musica, immagini e un’esperienza interattiva.",
-  gameTitle: "Dall’inferno in su — Il gioco",
+  gameTitle: "Cantica Zero — Dall’inferno in su",
   gameDescription:
-    "Attraversa Giudecca, Dite e Le Stelle in sessanta secondi: spezza il Rumore con i tuoi Versi, raccogli la Voce e supera quota zero.",
+    "Un platform-shooter verticale dal IX al I cerchio: corri, salta sulle pedane, spezza il Rumore con i Versi e raggiungi quota zero.",
   socialImageAlt:
     "Ghetto Superstar, progetto musicale di Davide Del Carmen",
   gameSocialImageAlt:
-    "Dall’inferno in su, il gioco della risalita di DDC",
+    "Cantica Zero, il platform-shooter verticale di Davide Del Carmen",
   locale: "it_IT",
   language: "it-IT",
   artistProfiles: {

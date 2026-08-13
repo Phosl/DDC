@@ -273,7 +273,7 @@ export default function HomePage() {
             <br />in su.
           </h2>
           <div className={styles.gameMeta} data-reveal>
-            <p>60 secondi. Una sola direzione.</p>
+            <p>Nove cerchi. Tre atti. Una direzione: su.</p>
             <Link href="/gioco" className={styles.gameAction}>
               Gioca ora <span aria-hidden="true">↗</span>
             </Link>

@@ -1,13 +1,14 @@
 # DDC — Ghetto Superstar
 
-Landing editoriale e mini-gioco interattivo per il progetto musicale di Davide Del Carmen.
+Landing editoriale e platform-shooter verticale per il progetto musicale di Davide Del Carmen.
 
 ## Stack
 
 - Next.js App Router
 - TypeScript e React
 - GSAP e ScrollTrigger
-- Canvas 2D per `/gioco`
+- Phaser 4 e Arcade Physics, caricati soltanto su `/gioco`
+- Web Audio procedurale originale
 
 ## Sviluppo
 
@@ -21,7 +22,24 @@ Controlli disponibili:
 ```bash
 npm run typecheck
 npm run lint
+npm test
+npm run test:e2e
 npm run build
 ```
 
 I materiali di lavorazione in `doc/` e i collegamenti di ascolto privati non vengono pubblicati.
+
+## Cantica Zero
+
+La campagna risale nove cerchi in tre Atti, da Giudecca alle Stelle. Il gioco è
+progettato in formato verticale e offre modalità Standard e Assistita con record
+locali separati.
+
+- Movimento: `A/D` oppure `←/→`
+- Salto variabile: `W`, `↑` oppure `Spazio`
+- Verso: `J` oppure `X`
+- Pausa: `P` oppure `Esc`
+
+Su schermi touch gli stessi comandi sono disponibili come quattro pulsanti
+multi-touch. Grafica, personaggi e suoni sono originali; i riferimenti ai giochi
+arcade anni Novanta riguardano esclusivamente ritmo e leggibilità dell’azione.

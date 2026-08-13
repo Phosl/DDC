@@ -39,13 +39,13 @@ const gameStructuredData = {
   "@context": "https://schema.org",
   "@type": "VideoGame",
   "@id": absoluteUrl("/gioco#game"),
-  name: "Dall’inferno in su",
-  alternateName: "Cantica Zero — Il gioco della risalita",
+  name: "Cantica Zero — Dall’inferno in su",
+  alternateName: "Il gioco della risalita di DDC",
   description: siteConfig.gameDescription,
   url: absoluteUrl("/gioco"),
   image: absoluteUrl("/gioco/opengraph-image"),
   inLanguage: siteConfig.language,
-  genre: ["Arcade", "Musicale", "Pixel art"],
+  genre: ["Platform", "Action", "Arcade", "Pixel art"],
   gamePlatform: "Web browser",
   playMode: "SinglePlayer",
   isAccessibleForFree: true,
@@ -86,7 +86,7 @@ export default function GamePage() {
               Dall’inferno <em>in su.</em>
             </h1>
             <div className={styles.heroFooter}>
-              <p>Tre gironi. Sessanta secondi. Dal fondo alle stelle.</p>
+              <p>Nove cerchi. Tre atti. Una direzione: su.</p>
               <a href="#partita">Inizia dal fondo ↓</a>
             </div>
           </div>
@@ -99,33 +99,34 @@ export default function GamePage() {
         >
           <div className={styles.rules}>
             <p className={styles.sectionIndex}>01 / LE REGOLE DEL VIANDANTE</p>
-            <h2 id="rules-title">Attraversa i tre Canti.</h2>
+            <h2 id="rules-title">Risali i nove cerchi.</h2>
             <p className={styles.rulesLead}>
-              Guida Davide dal fondo di Giudecca, sali oltre le mura di Dite
-              e raggiungi le stelle. Hai perso la via, non la voce.
+              Guida Davide dal ghiaccio di Giudecca fino alle stelle. Corri,
+              salta e attraversa tre Atti: hai perso la via, non la voce.
             </p>
             <ol>
               <li>
                 <span>01</span>
                 <p>
-                  <strong>Sali</strong>
-                  Tieni premuto per salire e lanciare Versi. Da tastiera usa
-                  Spazio o Freccia su.
+                  <strong>Muoviti e salta</strong>
+                  Usa A/D o le frecce per correre. W, Freccia su o Spazio
+                  controllano altezza e ritmo del salto.
                 </p>
               </li>
               <li>
                 <span>02</span>
                 <p>
-                  <strong>Respira</strong>
-                  Rilascia il comando prima che il fiato finisca.
+                  <strong>Lancia Versi</strong>
+                  Usa J o X. Da fermo e in aria miri in alto; correndo, il
+                  Verso sale in diagonale.
                 </p>
               </li>
               <li>
                 <span>03</span>
                 <p>
                   <strong>Spezza il rumore</strong>
-                  I Versi aprono la strada. Raccogli i frammenti Voce per
-                  guadagnare quota.
+                  I Versi aprono la strada e consumano FIATO. Raccogli Voce,
+                  Rima e Luce; tre vite ti separano dall’ultimo checkpoint.
                 </p>
               </li>
             </ol>

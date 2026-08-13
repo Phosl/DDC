@@ -17,6 +17,8 @@ Dite and Phlegethon are treated as consecutive places, not synonyms: the fortifi
 
 The three environment atlases share this brief: original 16-bit side-scrolling pixel art; hard pixel clusters and controlled dithering; three independently composited depth layers; DDC's black, cyan, magenta, and off-white palette; no text, gore, generic demons, military imagery, or recognizable elements from existing games.
 
-Davide's five separate animation strips (`idle`, `run`, `rise`, `verse`, `hit`) were generated from the project's supplied portraits as identity references. Locked traits: short curls and fade, trimmed beard, square sunglasses, black oversized T-shirt, chain, grey jeans, tattoos, and a microphone. The prompt explicitly prohibited weapons, logos, military poses, and imitation of existing characters.
+Davide's production action atlas and the earlier five animation studies (`idle`, `run`, `rise`, `verse`, `hit`) were generated from the project's supplied portraits as identity references. Locked traits: short curls and fade, trimmed beard, square sunglasses, black oversized T-shirt, chain, grey jeans, tattoos, and a microphone. The prompt explicitly prohibited weapons, logos, military poses, and imitation of existing characters.
 
-All generated masters were post-processed locally: chroma-key removal, lossless WebP conversion, and separate typed frame maps for controllable playback and fixed pivots.
+The runtime uses the revised `public/game/v2/sprites/davide-atlas-v2.png`: 24 distinct frames covering idle, run, jump, fall, landing, ground/air Verse, diagonal Verse, hit, defeat, and respawn.
+
+All generated masters were post-processed locally for transparent backgrounds and integrated through typed frame maps with fixed pivots. The files under `public/game/v2/` are the current Phaser production atlases; earlier strips remain as documented visual studies.

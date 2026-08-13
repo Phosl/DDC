@@ -11,8 +11,8 @@ export default function GameOpenGraphImage() {
   return new ImageResponse(
     <SocialCard
       accent="#ff2a78"
-      eyebrow="Gioco / 60 secondi"
-      footer="Evita il rumore. Trova la tua voce."
+      eyebrow="Cantica Zero / IX → I"
+      footer="Nove cerchi. Tre atti. Una direzione: su."
       title={["Dall’inferno", "in su."]}
     />,
     size,

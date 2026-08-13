@@ -3,6 +3,10 @@ node_modules/
 out/
 .vercel/
 tmp/
+test-results/
+playwright-report/
+coverage/
+*.tsbuildinfo
 *.log
 .DS_Store
 .env*
