@@ -51,6 +51,25 @@ export type GameSnapshot = Readonly<{
   statusText: string;
 }>;
 
+export type GameTelemetry = Readonly<{
+  phase: GamePhase;
+  breath: number;
+  circleId: string;
+  player: Readonly<{
+    x: number;
+    y: number;
+    velocityX: number;
+    velocityY: number;
+    grounded: boolean;
+    facing: -1 | 1;
+  }>;
+  projectile: Readonly<{
+    count: number;
+    velocityX: number | null;
+    velocityY: number | null;
+  }>;
+}>;
+
 export const GAME_AUDIO_CUES = [
   "jump",
   "land",
@@ -88,6 +107,7 @@ export type CreateRiseGameOptions = Readonly<{
 
 export interface GameController {
   setInput(input: Partial<GameInput>): void;
+  clearInput(): void;
   pause(reason?: string): void;
   resume(): void;
   restart(mode: "full-run" | "continue-act"): void;
@@ -97,5 +117,7 @@ export interface GameController {
   verifyCampaign?(): GameSnapshot;
   /** Present only in development, for exercising the real damage/respawn lifecycle. */
   verifyDamageRespawn?(): Promise<GameSnapshot>;
+  /** Present only in development, for browser tests driven by real DOM input. */
+  readTelemetry?(): GameTelemetry;
   destroy(): void;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CIRCLE_LEVELS } from "../../src/lib/rise-game/level-data";
+import { DIFFICULTY_TUNING } from "../../src/lib/rise-game/difficulty";
 import {
   EMPTY_BEST_TIMES,
   INITIAL_JUMP_WINDOW_STATE,
@@ -9,11 +10,16 @@ import {
   advanceRunTimer,
   consumeInputEdges,
   consumeLife,
+  isWithinVerticalViewport,
   mergeGameInput,
+  recoverBreath,
   reachActCheckpoint,
   resolveJumpFrame,
+  resolveVerseTrajectory,
   restartRunProgress,
   shouldCollideOneWay,
+  spendBreath,
+  restoreBreath,
   submitBestTime,
   simulateCampaignRun,
 } from "../../src/lib/rise-game/rules";
@@ -156,6 +162,84 @@ describe("jump rules", () => {
     expect(released).toMatchObject({ cut: true, velocityY: -180 });
     expect(nextFrame).toMatchObject({ cut: false, velocityY: -170 });
   });
+
+  it("keeps both accessible profiles above their authored route rises", () => {
+    const standard = DIFFICULTY_TUNING.standard.player;
+    const assist = DIFFICULTY_TUNING.assist.player;
+    const fullRise = (velocity: number, gravity: number) =>
+      (velocity * velocity) / (2 * gravity);
+
+    expect(fullRise(standard.jumpVelocity, standard.gravity)).toBeGreaterThan(64);
+    expect(
+      fullRise(
+        standard.jumpVelocity * standard.jumpCutMultiplier,
+        standard.gravity,
+      ),
+    ).toBeGreaterThan(48);
+    expect(fullRise(assist.jumpVelocity, assist.gravity)).toBeGreaterThan(96);
+  });
+});
+
+describe("Verse and FIATO rules", () => {
+  it("fires vertically without direction and diagonally from held input", () => {
+    const vertical = resolveVerseTrajectory({
+      moveX: 0,
+      facingDirection: -1,
+      projectileSpeed: 460,
+    });
+    const diagonal = resolveVerseTrajectory({
+      moveX: 1,
+      facingDirection: -1,
+      projectileSpeed: 460,
+    });
+
+    expect(vertical).toMatchObject({ diagonal: false, angleDegrees: -90 });
+    expect(vertical.velocityX).toBeCloseTo(0, 8);
+    expect(diagonal).toMatchObject({
+      diagonal: true,
+      direction: 1,
+      angleDegrees: -55,
+    });
+    expect(diagonal.velocityX).toBeGreaterThan(0);
+    expect(diagonal.velocityY).toBeLessThan(0);
+  });
+
+  it("spends, delays, recovers and caps FIATO deterministically", () => {
+    expect(spendBreath(10, 10)).toEqual({ breath: 0, spent: true });
+    expect(spendBreath(9, 10)).toEqual({ breath: 9, spent: false });
+    expect(
+      recoverBreath({
+        breath: 20,
+        maxBreath: 100,
+        lastShotAtMs: 1_000,
+        nowMs: 1_200,
+        deltaMs: 100,
+        rechargeDelayMs: 250,
+        rechargePerSecond: 36,
+      }),
+    ).toBe(20);
+    expect(
+      recoverBreath({
+        breath: 20,
+        maxBreath: 100,
+        lastShotAtMs: 1_000,
+        nowMs: 1_300,
+        deltaMs: 100,
+        rechargeDelayMs: 250,
+        rechargePerSecond: 36,
+      }),
+    ).toBeCloseTo(23.6);
+    expect(restoreBreath(96, 8, 100)).toBe(100);
+  });
+
+  it("engages an actor only inside the visible vertical viewport", () => {
+    expect(
+      isWithinVerticalViewport({ actorY: 500, scrollY: 100, viewportHeight: 672 }),
+    ).toBe(true);
+    expect(
+      isWithinVerticalViewport({ actorY: 90, scrollY: 100, viewportHeight: 672 }),
+    ).toBe(false);
+  });
 });
 
 describe("platform rules", () => {
@@ -177,6 +261,14 @@ describe("platform rules", () => {
         platformVelocityY: 30,
       }),
     ).toBe(false);
+    expect(
+      shouldCollideOneWay({
+        actorBottom: 117,
+        actorVelocityY: 70,
+        platformTop: 100,
+        tolerance: DIFFICULTY_TUNING.assist.platforms.oneWayTolerance,
+      }),
+    ).toBe(true);
   });
 
   it("moves at units per second and reflects cleanly at both endpoints", () => {

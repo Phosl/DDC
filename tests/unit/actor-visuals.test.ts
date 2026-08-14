@@ -83,23 +83,27 @@ describe("actor visual manifest", () => {
     });
   });
 
-  it("maps every player frame once and keeps the agreed action order", () => {
+  it("maps every aligned production frame once and keeps the agreed action order", () => {
     const frames = Object.values(PLAYER_VISUAL.animations).flatMap((animation) => [
       ...animation.frames,
     ]);
 
-    expect(frames).toEqual([...Array(24).keys()]);
-    expect(PLAYER_VISUAL.animations.idle.frames).toEqual([0, 1, 2, 3, 4, 5]);
-    expect(PLAYER_VISUAL.animations.run.frames).toEqual([6, 7, 8, 9, 10, 11]);
-    expect(PLAYER_VISUAL.animations["jump-start"].frames).toEqual([12, 13]);
+    expect(frames).toEqual([...Array(24).keys()].filter((frame) => frame !== 12 && frame !== 15));
+    expect(PLAYER_VISUAL.animations.idle.frames).toEqual([0, 1]);
+    expect(PLAYER_VISUAL.animations.run.frames).toEqual([2, 3, 4, 5]);
+    expect(PLAYER_VISUAL.animations["jump-start"].frames).toEqual([6, 7]);
     expect(PLAYER_VISUAL.animations["jump-start"].priority).toBeGreaterThan(
       PLAYER_VISUAL.animations.land.priority,
     );
-    expect(PLAYER_VISUAL.animations.jump.frames).toEqual([14]);
-    expect(PLAYER_VISUAL.animations.fall.frames).toEqual([15, 16]);
-    expect(PLAYER_VISUAL.animations.land.frames).toEqual([17]);
-    expect(PLAYER_VISUAL.animations.defeat.frames).toEqual([22]);
-    expect(PLAYER_VISUAL.animations.respawn.frames).toEqual([23]);
+    expect(PLAYER_VISUAL.animations.jump.frames).toEqual([8, 9]);
+    expect(PLAYER_VISUAL.animations.fall.frames).toEqual([10]);
+    expect(PLAYER_VISUAL.animations.land.frames).toEqual([11]);
+    expect(PLAYER_VISUAL.animations["fire-up-ground"].frames).toEqual([13]);
+    expect(PLAYER_VISUAL.animations["fire-up-air"].frames).toEqual([14]);
+    expect(PLAYER_VISUAL.animations["fire-diagonal"].frames).toEqual([16, 17]);
+    expect(PLAYER_VISUAL.animations.hit.frames).toEqual([18, 19]);
+    expect(PLAYER_VISUAL.animations.defeat.frames).toEqual([20, 21]);
+    expect(PLAYER_VISUAL.animations.respawn.frames).toEqual([22, 23]);
   });
 
   it("keeps enemy family rows and boss single-frame states explicit", () => {

@@ -12,6 +12,7 @@ import {
   validateAtlasData,
   validateAtlasFile,
 } from "../../scripts/process-game-atlas.mjs";
+import { PLAYER_VISUAL } from "../../src/lib/rise-game/visuals/visual-manifest";
 
 const WIDTH = 384;
 const HEIGHT = 256;
@@ -40,6 +41,30 @@ async function rawPixels(file: string) {
 }
 
 describe("game atlas pipeline", () => {
+  it("ships the approved Davide action atlas with transparent gutters", async () => {
+    const report = await validateAtlasFile(
+      path.join(process.cwd(), "public/game/v3/actors/davide-body.png"),
+      { gutter: 3, maxGreenSpill: 0.01 },
+    );
+
+    expect(report.valid).toBe(true);
+    expect(report.metrics?.alignment.nonEmptyCells).toBe(24);
+    expect(report.metrics?.gutterPixels).toBe(0);
+
+    const usedFrames = new Set(
+      Object.values(PLAYER_VISUAL.animations).flatMap(({ frames }) => frames),
+    );
+    const usedCells = report.metrics?.cells.filter(({ index }) => usedFrames.has(index)) ?? [];
+    const usedBottoms = usedCells.flatMap(({ bottom }) =>
+      bottom === null ? [] : [bottom],
+    );
+    const usedCenters = usedCells.flatMap(({ centerX }) =>
+      centerX === null ? [] : [centerX],
+    );
+    expect(Math.max(...usedBottoms) - Math.min(...usedBottoms)).toBeLessThanOrEqual(1);
+    expect(Math.max(...usedCenters) - Math.min(...usedCenters)).toBeLessThanOrEqual(2);
+  });
+
   it("preserves authoritative alpha and legitimate green in transparent art", async () => {
     const source = await temporaryPath("transparent-vfx.png");
     const destination = await temporaryPath("processed-vfx.png");

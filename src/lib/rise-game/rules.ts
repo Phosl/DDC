@@ -127,6 +127,108 @@ export function resolveJumpFrame({
   };
 }
 
+type VerseTrajectoryOptions = Readonly<{
+  moveX: -1 | 0 | 1;
+  facingDirection: -1 | 1;
+  projectileSpeed: number;
+}>;
+
+export type VerseTrajectory = Readonly<{
+  diagonal: boolean;
+  direction: -1 | 1;
+  angleDegrees: number;
+  velocityX: number;
+  velocityY: number;
+}>;
+
+export function resolveVerseTrajectory({
+  moveX,
+  facingDirection,
+  projectileSpeed,
+}: VerseTrajectoryOptions): VerseTrajectory {
+  const diagonal = moveX !== 0;
+  const direction = moveX === 0 ? facingDirection : moveX;
+  const angleDegrees = diagonal ? -90 + 35 * direction : -90;
+  const radians = (angleDegrees * Math.PI) / 180;
+  const safeSpeed = Number.isFinite(projectileSpeed) ? Math.max(0, projectileSpeed) : 0;
+
+  return {
+    diagonal,
+    direction,
+    angleDegrees,
+    velocityX: Math.cos(radians) * safeSpeed,
+    velocityY: Math.sin(radians) * safeSpeed,
+  };
+}
+
+type BreathRecoveryOptions = Readonly<{
+  breath: number;
+  maxBreath: number;
+  lastShotAtMs: number;
+  nowMs: number;
+  deltaMs: number;
+  rechargeDelayMs: number;
+  rechargePerSecond: number;
+}>;
+
+export function spendBreath(breath: number, cost: number) {
+  const current = Number.isFinite(breath) ? Math.max(0, breath) : 0;
+  const safeCost = Number.isFinite(cost) ? Math.max(0, cost) : Number.POSITIVE_INFINITY;
+  if (current < safeCost) return { breath: current, spent: false } as const;
+  return { breath: current - safeCost, spent: true } as const;
+}
+
+export function recoverBreath({
+  breath,
+  maxBreath,
+  lastShotAtMs,
+  nowMs,
+  deltaMs,
+  rechargeDelayMs,
+  rechargePerSecond,
+}: BreathRecoveryOptions) {
+  const safeMax = Number.isFinite(maxBreath) ? Math.max(0, maxBreath) : 0;
+  const current = Number.isFinite(breath) ? Math.max(0, Math.min(safeMax, breath)) : 0;
+  if (
+    !Number.isFinite(nowMs) ||
+    !Number.isFinite(deltaMs) ||
+    deltaMs <= 0 ||
+    (Number.isFinite(lastShotAtMs) &&
+      nowMs - lastShotAtMs <= Math.max(0, rechargeDelayMs))
+  ) {
+    return current;
+  }
+
+  const recovery = (Math.max(0, rechargePerSecond) * deltaMs) / 1_000;
+  return Math.min(safeMax, current + recovery);
+}
+
+export function restoreBreath(breath: number, amount: number, maxBreath: number) {
+  const safeMax = Number.isFinite(maxBreath) ? Math.max(0, maxBreath) : 0;
+  const current = Number.isFinite(breath) ? Math.max(0, Math.min(safeMax, breath)) : 0;
+  const recovery = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+  return Math.min(safeMax, current + recovery);
+}
+
+type VerticalViewportOptions = Readonly<{
+  actorY: number;
+  scrollY: number;
+  viewportHeight: number;
+  margin?: number;
+}>;
+
+export function isWithinVerticalViewport({
+  actorY,
+  scrollY,
+  viewportHeight,
+  margin = 0,
+}: VerticalViewportOptions) {
+  if (![actorY, scrollY, viewportHeight, margin].every(Number.isFinite)) return false;
+  const safeHeight = Math.max(0, viewportHeight);
+  const safeMargin = Math.max(0, margin);
+  return actorY >= scrollY - safeMargin && actorY <= scrollY + safeHeight + safeMargin;
+}
+
 type OneWayCollisionOptions = Readonly<{
   actorBottom: number;
   actorVelocityY: number;

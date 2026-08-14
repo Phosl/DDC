@@ -8,12 +8,12 @@ import Link from "next/link";
 import type {
   GameController,
   GameEvent,
-  GameInput,
   GameSnapshot,
 } from "@/lib/rise-game";
 import { GameAudioEngine } from "@/lib/game-audio";
 
 import styles from "./rise-game.module.css";
+import { useGameFullscreen } from "./use-game-fullscreen";
 
 gsap.registerPlugin(useGSAP);
 
@@ -24,15 +24,6 @@ declare global {
 }
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-
-const RELEASED_INPUT: GameInput = {
-  moveX: 0,
-  jumpPressed: false,
-  jumpHeld: false,
-  firePressed: false,
-  fireHeld: false,
-  pausePressed: false,
-};
 
 const CIRCLES: Record<string, { label: string; act: string }> = {
   IX: { label: "IX · Giudecca", act: "Il fondo che trattiene" },
@@ -160,7 +151,7 @@ export function RiseGame() {
 
   const releaseAllInputs = useCallback(() => {
     for (const lane of Object.values(activeInputsRef.current)) lane.clear();
-    controllerRef.current?.setInput(RELEASED_INPUT);
+    controllerRef.current?.clearInput();
   }, []);
 
   const updateHeldInput = useCallback(() => {
@@ -207,6 +198,21 @@ export function RiseGame() {
     },
     [releaseAllInputs],
   );
+
+  const {
+    displayMode,
+    isDesktopFullscreenEligible,
+    enterDesktopFullscreen,
+    exitDesktopFullscreen,
+  } = useGameFullscreen({
+    shellRef: rootRef,
+    onFullscreenExit: () => {
+      pauseGame("uscita dallo schermo intero");
+      setAnnouncement("Schermo intero chiuso. La partita resta in pausa.");
+    },
+  });
+
+  const isFullscreen = displayMode !== "inline";
 
   const resumeGame = useCallback(() => {
     controllerRef.current?.resume();
@@ -322,7 +328,19 @@ export function RiseGame() {
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.code === "KeyP" || event.code === "Escape") && !event.repeat) {
+      if (event.code === "Escape" && !event.repeat) {
+        event.preventDefault();
+        if (displayMode !== "inline") {
+          exitDesktopFullscreen();
+          pauseGame("uscita dallo schermo intero");
+          setAnnouncement("Schermo intero chiuso. La partita resta in pausa.");
+        } else {
+          pauseGame("tastiera");
+        }
+        return;
+      }
+
+      if (event.code === "KeyP" && !event.repeat) {
         event.preventDefault();
         if (snapshotRef.current?.phase === "paused") resumeGame();
         else pauseGame("tastiera");
@@ -360,7 +378,7 @@ export function RiseGame() {
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [pauseGame, pressInput, releaseInput, resumeGame]);
+  }, [displayMode, exitDesktopFullscreen, pauseGame, pressInput, releaseInput, resumeGame]);
 
   useGSAP(
     () => {
@@ -412,9 +430,14 @@ export function RiseGame() {
   const startGame = () => {
     if (!controllerRef.current) return;
     const available = audioEnabledRef.current ? audioRef.current?.begin() ?? false : true;
+    const enteredFullscreen = enterDesktopFullscreen();
     setAudioAvailable(available);
     controllerRef.current.resume();
-    setAnnouncement("Canto IX. Giudecca. La risalita comincia.");
+    setAnnouncement(
+      enteredFullscreen
+        ? "Schermo intero attivo. Canto IX, Giudecca. Premi Escape per uscire e mettere in pausa."
+        : "Canto IX. Giudecca. La risalita comincia.",
+    );
     window.requestAnimationFrame(() => stageRef.current?.focus({ preventScroll: true }));
   };
 
@@ -452,6 +475,20 @@ export function RiseGame() {
     const available = audioRef.current?.setEnabled(enabled) ?? false;
     setAudioAvailable(available);
     if (enabled && isPlaying) audioRef.current?.resume();
+  };
+
+  const toggleFullscreen = () => {
+    if (isFullscreen) {
+      exitDesktopFullscreen();
+      return;
+    }
+
+    if (enterDesktopFullscreen()) {
+      setAnnouncement("Schermo intero attivo. Premi Escape per uscire e mettere in pausa.");
+    }
+    if (snapshotRef.current?.phase === "playing") {
+      window.requestAnimationFrame(() => stageRef.current?.focus({ preventScroll: true }));
+    }
   };
 
   const bindPointer = (lane: InputLane) => ({
@@ -492,7 +529,14 @@ export function RiseGame() {
     : 0;
 
   return (
-    <section className={styles.game} ref={rootRef} aria-label="Cantica Zero">
+    <section
+      className={styles.game}
+      ref={rootRef}
+      id="cantica-game-shell"
+      data-testid="rise-game-shell"
+      data-display-mode={displayMode}
+      aria-label="Cantica Zero"
+    >
       <p className={styles.srOnly} aria-live="polite" aria-atomic="true">
         {announcement}
       </p>
@@ -515,6 +559,22 @@ export function RiseGame() {
         >
           Audio {audioEnabled ? "on" : "off"}
         </button>
+        {isDesktopFullscreenEligible ? (
+          <button
+            type="button"
+            className={`${styles.toolButton} ${styles.fullscreenButton}`}
+            data-testid="rise-game-fullscreen-toggle"
+            aria-label={
+              isFullscreen
+                ? "Esci dallo schermo intero"
+                : "Attiva schermo intero"
+            }
+            aria-pressed={isFullscreen}
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? "Esci fullscreen" : "Schermo intero"}
+          </button>
+        ) : null}
         <button
           type="button"
           className={styles.toolButton}
@@ -566,7 +626,10 @@ export function RiseGame() {
           <strong>{circle.label}</strong>
         </header>
 
-        <div className={styles.breath} aria-label={`Fiato ${Math.round(snapshot?.breath ?? 100)} percento`}>
+        <div
+          className={styles.breath}
+          aria-label={`Fiato ${Math.round(snapshot?.breath ?? 100)} percento`}
+        >
           <span>FIATO</span>
           <b><i style={{ width: `${Math.round(snapshot?.breath ?? 100)}%` }} /></b>
         </div>
@@ -709,7 +772,10 @@ export function RiseGame() {
         <div><dt>Muovi</dt><dd>A/D · ← →</dd></div>
         <div><dt>Salta</dt><dd>W · ↑ · Spazio</dd></div>
         <div><dt>Verso</dt><dd>J · X</dd></div>
-        <div><dt>Pausa</dt><dd>P · Esc</dd></div>
+        <div>
+          <dt>Pausa</dt>
+          <dd>{isFullscreen ? "P pausa · Esc esce e mette in pausa" : "P · Esc"}</dd>
+        </div>
       </dl>
 
       {!audioAvailable && audioEnabled ? (

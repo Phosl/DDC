@@ -1,17 +1,16 @@
 import type Phaser from "phaser";
 
 import {
-  ASSIST_PLAYER,
-  COMBAT,
   GAME_HEIGHT,
   GAME_WIDTH,
-  PLAYER,
   RECORD_STORAGE_KEY,
   SNAPSHOT_INTERVAL_MS,
   TILE_SIZE,
   WORLD_HEIGHT,
   WORLD_WIDTH,
+  getDifficultyTuning,
 } from "./config";
+import type { DifficultyEnemyKind } from "./difficulty";
 import {
   CIRCLE_LEVELS,
   LEVEL_HEIGHT,
@@ -20,7 +19,18 @@ import {
   type CircleLevelDefinition,
 } from "./level-data";
 import type { AscentSceneHandle, RuntimeBridge } from "./internal";
-import { shouldCollideOneWay as shouldCollideOneWayRule } from "./rules";
+import {
+  INITIAL_JUMP_WINDOW_STATE,
+  advanceMovingPlatform,
+  isWithinVerticalViewport,
+  recoverBreath,
+  resolveJumpFrame,
+  resolveVerseTrajectory,
+  restoreBreath,
+  spendBreath,
+  shouldCollideOneWay as shouldCollideOneWayRule,
+  type JumpWindowState,
+} from "./rules";
 import type {
   BossSnapshot,
   GameAudioCue,
@@ -36,9 +46,10 @@ import {
   type ActorVisualController,
   type EnemyVisualController,
 } from "./visuals/actor-visuals";
-import type {
-  BossVisualState,
-  PlayerVisualState,
+import {
+  PLAYER_VISUAL,
+  type BossVisualState,
+  type PlayerVisualState,
 } from "./visuals/visual-manifest";
 import {
   createCanticaVfxSystem,
@@ -55,13 +66,7 @@ type DynamicBodyObject = BodyGameObject & {
   body: Phaser.Physics.Arcade.Body;
 };
 type BossId = BossSnapshot["id"];
-type EnemyKind =
-  | "walker"
-  | "charger"
-  | "sentry"
-  | "flyer"
-  | "roller"
-  | "mimic";
+type EnemyKind = DifficultyEnemyKind;
 type PickupKind = "voice" | "breath" | "rima" | "light";
 
 const BOSS_NAMES: Record<BossId, string> = {
@@ -91,8 +96,6 @@ const ENEMY_KINDS: readonly EnemyKind[] = [
 const ASSET_PATHS = {
   platforms: "/game/v2/tiles/platforms.png",
 } as const;
-
-const SENTRY_ATTACK_WINDUP_MS = 250;
 
 type TimedAttackState = Readonly<{
   actorActive: boolean;
@@ -125,6 +128,50 @@ export function resolveVerseHitbox(angleDegrees: number, usesAtlas: boolean) {
   return {
     width: 16 * cosine + 8 * sine,
     height: 16 * sine + 8 * cosine,
+  };
+}
+
+export function resolveSourceHitbox(
+  worldWidth: number,
+  worldHeight: number,
+  scaleX: number,
+  scaleY: number,
+) {
+  return {
+    width: worldWidth / Math.max(0.001, Math.abs(scaleX)),
+    height: worldHeight / Math.max(0.001, Math.abs(scaleY)),
+  };
+}
+
+export function resolveStablePlatformPosition({
+  platformX,
+  platformY,
+  platformLeft,
+  platformRight,
+  offsetX,
+  offsetY,
+  playerWidth,
+  worldWidth,
+}: Readonly<{
+  platformX: number;
+  platformY: number;
+  platformLeft: number;
+  platformRight: number;
+  offsetX: number;
+  offsetY: number;
+  playerWidth: number;
+  worldWidth: number;
+}>) {
+  const safeInset = playerWidth / 2 + 2;
+  const minimumX = platformLeft + safeInset;
+  const maximumX = platformRight - safeInset;
+  const x =
+    minimumX <= maximumX
+      ? Math.max(minimumX, Math.min(maximumX, platformX + offsetX))
+      : platformX;
+  return {
+    x: Math.max(24, Math.min(worldWidth - 24, x)),
+    y: platformY + offsetY,
   };
 }
 
@@ -186,7 +233,7 @@ export function createAscentScene(
     private phase: GamePhase = "ready";
     private elapsedMs = 0;
     private lives = 3;
-    private breath: number = COMBAT.maxBreath;
+    private breath = getDifficultyTuning(bridge.assist).combat.maxBreath;
     private voices = 0;
     private strofe = 0;
     private recordEligible = true;
@@ -196,10 +243,13 @@ export function createAscentScene(
     private rimaUntil = 0;
     private invulnerableUntil = 0;
     private lastShotAt = -Infinity;
+    private lastShotWasDiagonal = false;
     private lastSnapshotAt = -Infinity;
-    private lastGroundedAt = -Infinity;
-    private jumpBufferedAt = -Infinity;
-    private jumpCut = true;
+    private jumpWindowState: JumpWindowState = {
+      ...INITIAL_JUMP_WINDOW_STATE,
+      jumpCut: true,
+    };
+    private nextEmptyBreathFeedbackAt = -Infinity;
     private wasGrounded = false;
     private lastAirborneVelocityY = 0;
     private landedUntil = -Infinity;
@@ -230,6 +280,12 @@ export function createAscentScene(
     private bosses!: Phaser.Physics.Arcade.Group;
     private bossGates = new Map<BossId, Phaser.GameObjects.Rectangle>();
     private checkpointSpawns = new Map<number, Phaser.Math.Vector2>();
+    private circleSpawns = new Map<number, Phaser.Math.Vector2>();
+    private lastStableSpawn: Phaser.Math.Vector2 | null = null;
+    private lastStablePlatform: BodyObject | null = null;
+    private lastStablePlatformOffset: Phaser.Math.Vector2 | null = null;
+    private bossCheckpointSpawn: Phaser.Math.Vector2 | null = null;
+    private bossCheckpointCircleIndex = -1;
     private loadedActs = new Set<number>();
     private loadingActs = new Set<number>();
     private backgroundLevelsDrawn = new Set<string>();
@@ -240,11 +296,15 @@ export function createAscentScene(
       super({ key: "cantica-zero-ascent" });
     }
 
+    private get tuning() {
+      return getDifficultyTuning(bridge.assist);
+    }
+
     init() {
       this.phase = "ready";
       this.elapsedMs = 0;
       this.lives = 3;
-      this.breath = COMBAT.maxBreath;
+      this.breath = this.tuning.combat.maxBreath;
       this.voices = 0;
       this.strofe = 0;
       this.recordEligible = true;
@@ -254,10 +314,10 @@ export function createAscentScene(
       this.rimaUntil = 0;
       this.invulnerableUntil = 0;
       this.lastShotAt = -Infinity;
+      this.lastShotWasDiagonal = false;
       this.lastSnapshotAt = -Infinity;
-      this.lastGroundedAt = -Infinity;
-      this.jumpBufferedAt = -Infinity;
-      this.jumpCut = true;
+      this.jumpWindowState = { ...INITIAL_JUMP_WINDOW_STATE, jumpCut: true };
+      this.nextEmptyBreathFeedbackAt = -Infinity;
       this.wasGrounded = false;
       this.lastAirborneVelocityY = 0;
       this.landedUntil = -Infinity;
@@ -270,6 +330,12 @@ export function createAscentScene(
       this.phaseBeforePause = "playing";
       this.bossGates.clear();
       this.checkpointSpawns.clear();
+      this.circleSpawns.clear();
+      this.lastStableSpawn = null;
+      this.lastStablePlatform = null;
+      this.lastStablePlatformOffset = null;
+      this.bossCheckpointSpawn = null;
+      this.bossCheckpointCircleIndex = -1;
       this.loadedActs.clear();
       this.loadingActs.clear();
       this.backgroundLevelsDrawn.clear();
@@ -330,6 +396,9 @@ export function createAscentScene(
         this.checkpointSpawns.get(0) ??
         new PhaserRuntime.Math.Vector2(GAME_WIDTH / 2, WORLD_HEIGHT - 80);
       this.createPlayer(initialSpawn.x, initialSpawn.y);
+      this.lastStableSpawn = initialSpawn.clone();
+      this.lastStablePlatform = null;
+      this.lastStablePlatformOffset = null;
       this.createCollisions();
 
       this.cameras.main.scrollY = Math.max(0, WORLD_HEIGHT - GAME_HEIGHT);
@@ -374,7 +443,7 @@ export function createAscentScene(
       this.elapsedMs += safeDelta;
       const gameTime = this.elapsedMs;
       this.updatePlayer(gameTime, safeDelta);
-      this.updateMovingPlatforms();
+      this.updateMovingPlatforms(safeDelta);
       this.updateEnemies(gameTime);
       this.updateBosses(gameTime);
       this.updateProjectiles(gameTime);
@@ -426,7 +495,7 @@ export function createAscentScene(
       this.statusText = "La salita continua — fuori classifica";
       bridge.desiredRunning = true;
       this.physics.resume();
-      this.respawnAtCheckpoint();
+      this.respawnAtActCheckpoint();
       this.emitAnnouncement("Continui dall'inizio dell'Atto. Record disattivato.");
       this.emitSnapshot(true);
     }
@@ -434,6 +503,30 @@ export function createAscentScene(
     setAssist(enabled: boolean) {
       bridge.assist = enabled;
       this.assistedRun = this.phase === "ready" ? enabled : this.assistedRun || enabled;
+      this.movingPlatforms?.getChildren().forEach((child) => {
+        if (isBodyObject(child)) child.setData("tuningMode", "pending");
+      });
+      this.enemies?.getChildren().forEach((child) => {
+        if (!isBodyObject(child) || child.getData("defeated")) return;
+        const kind = child.getData("kind") as EnemyKind;
+        const targetHealth = this.tuning.enemies.health[kind];
+        const currentHealth = child.getData("hp") as number;
+        child.setData(
+          "hp",
+          this.phase === "ready" ? targetHealth : Math.min(currentHealth, targetHealth),
+        );
+      });
+      this.bosses?.getChildren().forEach((child) => {
+        if (!isBodyObject(child) || child.getData("defeated")) return;
+        const id = child.getData("id") as BossId;
+        const targetHealth = this.tuning.bosses.health[id];
+        const currentHealth = child.getData("hp") as number;
+        child.setData("maxHp", targetHealth);
+        child.setData(
+          "hp",
+          this.phase === "ready" ? targetHealth : Math.min(currentHealth, targetHealth),
+        );
+      });
       this.bestMs = readBestTime(this.assistedRun);
       this.emitSnapshot(true);
     }
@@ -484,6 +577,40 @@ export function createAscentScene(
       return snapshot;
     }
 
+    readTelemetry() {
+      const body = this.player.body as Phaser.Physics.Arcade.Body;
+      const projectiles = this.playerProjectiles
+        .getChildren()
+        .filter((child): child is BodyObject => isBodyObject(child) && child.active);
+      const latestProjectile = projectiles.at(-1);
+      const projectileBody = latestProjectile?.body;
+
+      return {
+        phase: this.phase,
+        breath: this.breath,
+        circleId: CIRCLE_LEVELS[this.currentCircleIndex]?.id ?? "IX",
+        player: {
+          x: this.player.x,
+          y: this.player.y,
+          velocityX: body.velocity.x,
+          velocityY: body.velocity.y,
+          grounded: body.blocked.down || body.touching.down,
+          facing: this.player.flipX ? -1 : 1,
+        },
+        projectile: {
+          count: projectiles.length,
+          velocityX:
+            projectileBody instanceof PhaserRuntime.Physics.Arcade.Body
+              ? projectileBody.velocity.x
+              : null,
+          velocityY:
+            projectileBody instanceof PhaserRuntime.Physics.Arcade.Body
+              ? projectileBody.velocity.y
+              : null,
+        },
+      } as const;
+    }
+
     private queueActAssets(actIndex: 1 | 2) {
       if (this.loadedActs.has(actIndex) || this.loadingActs.has(actIndex)) return;
       const bossId: BossId = actIndex === 1 ? "pluto" : "charon";
@@ -527,7 +654,7 @@ export function createAscentScene(
       this.pickups = this.physics.add.group({ allowGravity: false });
       this.playerProjectiles = this.physics.add.group({
         allowGravity: false,
-        maxSize: COMBAT.maxProjectiles,
+        maxSize: this.tuning.combat.maxProjectiles,
       });
       this.hostileProjectiles = this.physics.add.group({ allowGravity: false });
       this.bosses = this.physics.add.group({ allowGravity: false });
@@ -647,8 +774,10 @@ export function createAscentScene(
           if (symbol === "H" || symbol === "V") {
             this.createMovingPlatform(x, y, level.actIndex, symbol === "H" ? "x" : "y");
           } else if (symbol === "S") {
+            const spawn = new PhaserRuntime.Math.Vector2(x, y - 30);
+            this.circleSpawns.set(index, spawn);
             if (level.checkpoint) {
-              this.checkpointSpawns.set(level.actIndex, new PhaserRuntime.Math.Vector2(x, y - 30));
+              this.checkpointSpawns.set(level.actIndex, spawn.clone());
             }
           } else if (symbol === "E") {
             this.createEnemy(x, y - 10, ENEMY_KINDS[enemyCounter % ENEMY_KINDS.length], level.actIndex);
@@ -788,8 +917,16 @@ export function createAscentScene(
       actIndex: 0 | 1 | 2,
       axis: "x" | "y",
     ) {
+      const platformTuning = this.tuning.platforms;
       const palette = ACT_PALETTES[actIndex];
-      const platform = this.add.rectangle(x, y, 64, 12, palette.accent, 0.92);
+      const platform = this.add.rectangle(
+        x,
+        y,
+        platformTuning.movingWidth,
+        12,
+        palette.accent,
+        0.92,
+      );
       const authoredVisual = this.textures.exists("platform-v2");
       platform
         .setAlpha(authoredVisual ? 0.12 : 0.92)
@@ -803,20 +940,24 @@ export function createAscentScene(
         axis,
         originX: x,
         originY: y,
-        direction: 1,
-        range: axis === "x" ? 72 : 58,
+        direction: axis === "x" ? 1 : -1,
+        range:
+          axis === "x"
+            ? platformTuning.horizontalRange
+            : platformTuning.verticalRange,
         lastX: x,
         lastY: y,
+        tuningMode: bridge.assist ? "assist" : "standard",
       });
       if (authoredVisual) {
         const visual = this.add
           .image(x, y - 2, "platform-v2", actIndex * 8 + (axis === "x" ? 3 : 4))
-          .setDisplaySize(72, 24)
+          .setDisplaySize(platformTuning.movingWidth, 24)
           .setDepth(2);
         platform.setData("visual", visual);
       }
-      if (axis === "x") body.setVelocityX(48);
-      else body.setVelocityY(-38);
+      if (axis === "x") body.setVelocityX(platformTuning.horizontalSpeed);
+      else body.setVelocityY(-platformTuning.verticalSpeed);
       this.movingPlatforms.add(platform);
     }
 
@@ -832,11 +973,12 @@ export function createAscentScene(
       }
       enemy.setDepth(5).setData({
         kind,
-        hp: kind === "roller" || kind === "charger" ? 3 : kind === "sentry" ? 2 : 1,
+        hp: this.tuning.enemies.health[kind],
         originX: x,
         originY: y,
         direction: x < GAME_WIDTH / 2 ? 1 : -1,
-        nextAttackAt: 0,
+        nextAttackAt: Number.POSITIVE_INFINITY,
+        engaged: false,
         seed: (x * 13 + y * 7) % 1000,
         actIndex,
       });
@@ -853,7 +995,7 @@ export function createAscentScene(
         body.setSize(kind === "flyer" ? 26 : 22, kind === "flyer" ? 18 : 28);
       }
       body.setAllowGravity(kind !== "flyer" && kind !== "sentry");
-      body.setMaxVelocity(120, PLAYER.maxFallVelocity);
+      body.setMaxVelocity(120, this.tuning.player.maxFallVelocity);
       if (kind === "sentry") body.setImmovable(true);
       this.enemies.add(enemy);
     }
@@ -874,6 +1016,7 @@ export function createAscentScene(
     ) {
       const texture = this.textures.exists(BOSS_TEXTURE) ? BOSS_TEXTURE : "boss-fallback";
       const boss = this.physics.add.sprite(x, y, texture, 0);
+      const maxHealth = this.tuning.bosses.health[id];
       const authored = texture !== "boss-fallback";
       if (authored) {
         const visual = createBossVisualController(this, boss, id);
@@ -882,11 +1025,11 @@ export function createAscentScene(
       }
       boss.setDepth(8).setData({
         id,
-        hp: 18,
-        maxHp: 18,
+        hp: maxHealth,
+        maxHp: maxHealth,
         originX: x,
         originY: y,
-        nextAttackAt: 0,
+        nextAttackAt: Number.POSITIVE_INFINITY,
         active: false,
         actIndex,
       });
@@ -909,27 +1052,44 @@ export function createAscentScene(
       this.player = this.physics.add.sprite(x, y, this.authoredPlayer ? PLAYER_TEXTURE : "player-fallback", 0);
       this.player.setDepth(12).setCollideWorldBounds(true);
       const body = this.player.body as Phaser.Physics.Arcade.Body;
+      const playerTuning = this.tuning.player;
       if (this.authoredPlayer) {
         this.playerVisual = createPlayerVisualController(this, this.player);
-        body.setSize(29, 32, true);
-        body.setOffset(17.5, 26);
+        const sourceHitbox = resolveSourceHitbox(
+          playerTuning.width,
+          playerTuning.height,
+          this.player.scaleX,
+          this.player.scaleY,
+        );
+        body.setSize(sourceHitbox.width, sourceHitbox.height, true);
+        body.setOffset(
+          PLAYER_VISUAL.pivot.x - sourceHitbox.width / 2,
+          PLAYER_VISUAL.pivot.y - sourceHitbox.height,
+        );
       } else {
         this.player.setOrigin(0.5, 0.90625);
-        body.setSize(22, 32, true);
+        body.setSize(playerTuning.width, playerTuning.height, true);
         body.setOffset(13, 26);
       }
-      body.setMaxVelocity(PLAYER.speed, PLAYER.maxFallVelocity);
+      body.setMaxVelocity(playerTuning.speed, playerTuning.maxFallVelocity);
     }
 
     private createCollisions() {
-      this.physics.add.collider(this.player, this.staticPlatforms);
+      this.physics.add.collider(this.player, this.staticPlatforms, (_player, platform) => {
+        if (isBodyObject(platform)) this.rememberStableSpawn(platform);
+      });
       this.physics.add.collider(this.player, this.movingPlatforms, (_player, platform) => {
-        if (isBodyObject(platform)) this.lastMovingPlatform = platform;
+        if (isBodyObject(platform)) {
+          this.lastMovingPlatform = platform;
+          this.rememberStableSpawn(platform);
+        }
       });
       this.physics.add.collider(
         this.player,
         this.oneWayPlatforms,
-        undefined,
+        (_player, platform) => {
+          if (isBodyObject(platform)) this.rememberStableSpawn(platform);
+        },
         (player, platform) => this.shouldCollideOneWay(player, platform),
       );
       this.physics.add.collider(this.player, this.crumblePlatforms, (_player, platform) => {
@@ -968,6 +1128,64 @@ export function createAscentScene(
         }
         if (isBodyObject(boss)) this.damageBoss(boss);
       });
+      [
+        this.staticPlatforms,
+        this.oneWayPlatforms,
+        this.movingPlatforms,
+        this.crumblePlatforms,
+      ].forEach((platforms) => {
+        this.physics.add.collider(
+          this.hostileProjectiles,
+          platforms,
+          (projectile) => {
+            if (isBodyObject(projectile)) this.dissolveHostileProjectile(projectile);
+          },
+        );
+      });
+    }
+
+    private rememberStableSpawn(platform: BodyObject) {
+      if (!this.player?.body || !platform.body.enable) return;
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+      if (playerBody.velocity.y < 0 || playerBody.bottom > platform.body.top + 14) return;
+      this.lastStableSpawn = new PhaserRuntime.Math.Vector2(
+        PhaserRuntime.Math.Clamp(this.player.x, 24, GAME_WIDTH - 24),
+        this.player.y - 2,
+      );
+      this.lastStablePlatform = platform;
+      this.lastStablePlatformOffset = new PhaserRuntime.Math.Vector2(
+        this.lastStableSpawn.x - platform.x,
+        this.lastStableSpawn.y - platform.y,
+      );
+    }
+
+    private resolveLastStableSpawn() {
+      const platform = this.lastStablePlatform;
+      const offset = this.lastStablePlatformOffset;
+      if (
+        platform?.active &&
+        platform.body?.enable &&
+        offset
+      ) {
+        const resolved = resolveStablePlatformPosition({
+          platformX: platform.x,
+          platformY: platform.y,
+          platformLeft: platform.body.left,
+          platformRight: platform.body.right,
+          offsetX: offset.x,
+          offsetY: offset.y,
+          playerWidth: this.tuning.player.width,
+          worldWidth: GAME_WIDTH,
+        });
+        return new PhaserRuntime.Math.Vector2(resolved.x, resolved.y);
+      }
+      return this.lastStableSpawn?.clone() ?? null;
+    }
+
+    private dissolveHostileProjectile(projectile: BodyObject) {
+      if (!projectile.active) return;
+      this.vfx?.playWorld("noise-impact", projectile.x, projectile.y);
+      projectile.destroy();
     }
 
     private shouldCollideOneWay(
@@ -985,19 +1203,21 @@ export function createAscentScene(
         actorVelocityY: body.velocity.y,
         platformTop: platform.body.top,
         platformVelocityY,
+        tolerance: this.tuning.platforms.oneWayTolerance,
       });
     }
 
     private armCrumblePlatform(platform: BodyObject) {
       if (platform.getData("armed")) return;
+      const platformTuning = this.tuning.platforms;
       platform.setData("armed", true);
-      this.time.delayedCall(260, () => {
+      this.time.delayedCall(platformTuning.crumbleDelayMs, () => {
         if (!platform.active) return;
         platform.setVisible(false);
         const visual = platform.getData("visual") as Phaser.GameObjects.Image | undefined;
         visual?.setVisible(false);
         platform.body.enable = false;
-        this.time.delayedCall(2_000, () => {
+        this.time.delayedCall(platformTuning.crumbleRestoreMs, () => {
           if (!platform.active) return;
           platform.setVisible(true);
           visual?.setVisible(true);
@@ -1007,20 +1227,50 @@ export function createAscentScene(
       });
     }
 
-    private updateMovingPlatforms() {
+    private updateMovingPlatforms(delta: number) {
+      const platformTuning = this.tuning.platforms;
+      const tuningMode = bridge.assist ? "assist" : "standard";
       this.movingPlatforms.getChildren().forEach((child) => {
         if (!isDynamicBodyObject(child)) return;
         const axis = child.getData("axis") as "x" | "y";
+        if (child.getData("tuningMode") !== tuningMode) {
+          child.setData("tuningMode", tuningMode);
+          child.setData(
+            "range",
+            axis === "x"
+              ? platformTuning.horizontalRange
+              : platformTuning.verticalRange,
+          );
+          child.setDisplaySize(platformTuning.movingWidth, 12);
+          child.body.setSize(platformTuning.movingWidth, 12, true);
+          const authoredVisual = child.getData("visual") as
+            | Phaser.GameObjects.Image
+            | undefined;
+          authoredVisual?.setDisplaySize(platformTuning.movingWidth, 24);
+        }
         const origin = axis === "x" ? (child.getData("originX") as number) : (child.getData("originY") as number);
         const coordinate = axis === "x" ? child.x : child.y;
         const range = child.getData("range") as number;
         const body = child.body;
-        if (Math.abs(coordinate - origin) >= range) {
-          const direction = coordinate > origin ? -1 : 1;
-          child.setData("direction", direction);
-          if (axis === "x") body.setVelocityX(48 * direction);
-          else body.setVelocityY(38 * direction);
-        }
+        const speed =
+          axis === "x"
+            ? platformTuning.horizontalSpeed
+            : platformTuning.verticalSpeed;
+        const next = advanceMovingPlatform(
+          {
+            position: coordinate,
+            origin,
+            direction: child.getData("direction") as -1 | 1,
+            range,
+            speed,
+          },
+          delta,
+        );
+        child.setData("direction", next.direction);
+        const velocity =
+          delta > 0 ? ((next.position - coordinate) * 1_000) / delta : 0;
+        if (axis === "x") body.setVelocity(velocity, 0);
+        else body.setVelocity(0, velocity);
         child.setData("lastX", child.x);
         child.setData("lastY", child.y);
         const visual = child.getData("visual") as Phaser.GameObjects.Image | undefined;
@@ -1030,30 +1280,51 @@ export function createAscentScene(
 
     private updatePlayer(time: number, delta: number) {
       const body = this.player.body as Phaser.Physics.Arcade.Body;
-      const tuning = bridge.assist ? ASSIST_PLAYER : PLAYER;
-      body.setMaxVelocity(tuning.speed, PLAYER.maxFallVelocity);
-      body.setGravityY(bridge.assist ? ASSIST_PLAYER.gravity - PLAYER.gravity : 0);
+      const tuning = this.tuning;
+      const playerTuning = tuning.player;
+      const mechanicTuning = tuning.mechanics;
+      body.setMaxVelocity(playerTuning.speed, playerTuning.maxFallVelocity);
+      body.setGravityY(
+        playerTuning.gravity - getDifficultyTuning(false).player.gravity,
+      );
       const mechanics = CIRCLE_LEVELS[this.currentCircleIndex]?.mechanics ?? [];
       const stickyGround = mechanics.includes("sticky") && (body.blocked.down || body.touching.down);
-      const targetSpeed = bridge.input.moveX * tuning.speed * (stickyGround ? 0.66 : 1);
+      const targetSpeed =
+        bridge.input.moveX *
+        playerTuning.speed *
+        (stickyGround ? mechanicTuning.stickySpeedScale : 1);
       if (mechanics.includes("ice") && (body.blocked.down || body.touching.down)) {
-        body.setVelocityX(PhaserRuntime.Math.Linear(body.velocity.x, targetSpeed, 0.075));
+        body.setVelocityX(
+          PhaserRuntime.Math.Linear(
+            body.velocity.x,
+            targetSpeed,
+            mechanicTuning.iceResponsiveness,
+          ),
+        );
       } else {
         body.setVelocityX(targetSpeed);
       }
       if (mechanics.includes("wind") && !body.blocked.down) {
-        body.setVelocityX(body.velocity.x + Math.sin(time / 410) * (bridge.assist ? 12 : 24));
+        body.setVelocityX(
+          body.velocity.x + Math.sin(time / 410) * mechanicTuning.windForce,
+        );
       }
       if (mechanics.includes("knockback") && !body.blocked.down) {
-        body.setVelocityX(body.velocity.x + Math.sin(time / 260) * (bridge.assist ? 5 : 10));
+        body.setVelocityX(
+          body.velocity.x + Math.sin(time / 260) * mechanicTuning.knockbackForce,
+        );
       }
       if (mechanics.includes("rain") && !body.blocked.down) {
-        body.setVelocityY(Math.min(PLAYER.maxFallVelocity, body.velocity.y + delta * (bridge.assist ? 0.018 : 0.034)));
+        body.setVelocityY(
+          Math.min(
+            playerTuning.maxFallVelocity,
+            body.velocity.y + delta * mechanicTuning.rainForce,
+          ),
+        );
       }
       if (bridge.input.moveX !== 0) this.player.setFlipX(bridge.input.moveX < 0);
 
       const grounded = body.blocked.down || body.touching.down;
-      if (grounded) this.lastGroundedAt = time;
       if (grounded && !this.wasGrounded && body.velocity.y >= 0) {
         const hardLanding = this.lastAirborneVelocityY > 420;
         this.landedUntil = time + 150;
@@ -1070,33 +1341,39 @@ export function createAscentScene(
       else this.lastAirborneVelocityY = 0;
       this.wasGrounded = grounded;
 
-      if (bridge.input.jumpPressed) {
-        this.jumpBufferedAt = time;
-        bridge.input.jumpPressed = false;
+      const jumpFrame = resolveJumpFrame({
+        state: this.jumpWindowState,
+        nowMs: time,
+        grounded,
+        jumpPressed: bridge.input.jumpPressed,
+        jumpHeld: bridge.input.jumpHeld,
+        velocityY: body.velocity.y,
+        coyoteMs: playerTuning.coyoteMs,
+        jumpBufferMs: playerTuning.jumpBufferMs,
+        jumpVelocity: playerTuning.jumpVelocity,
+        cutMultiplier: playerTuning.jumpCutMultiplier,
+      });
+      bridge.input.jumpPressed = false;
+      this.jumpWindowState = jumpFrame.state;
+      if (jumpFrame.velocityY !== body.velocity.y) {
+        body.setVelocityY(jumpFrame.velocityY);
       }
-      const canUseCoyote = time - this.lastGroundedAt <= tuning.coyoteMs;
-      const hasBufferedJump = time - this.jumpBufferedAt <= tuning.jumpBufferMs;
-      if (hasBufferedJump && canUseCoyote) {
-        body.setVelocityY(tuning.jumpVelocity);
-        this.jumpBufferedAt = -Infinity;
-        this.lastGroundedAt = -Infinity;
-        this.jumpCut = false;
+      if (jumpFrame.jumped) {
         this.playerVisual?.play("jump-start");
         this.emitAudio("jump");
-      }
-      if (!bridge.input.jumpHeld && !this.jumpCut && body.velocity.y < 0) {
-        body.setVelocityY(body.velocity.y * 0.5);
-        this.jumpCut = true;
       }
 
       if (bridge.input.firePressed || bridge.input.fireHeld) this.tryFire(time);
       bridge.input.firePressed = false;
-      if (time - this.lastShotAt > COMBAT.rechargeDelayMs) {
-        this.breath = Math.min(
-          COMBAT.maxBreath,
-          this.breath + (COMBAT.rechargePerSecond * delta) / 1_000,
-        );
-      }
+      this.breath = recoverBreath({
+        breath: this.breath,
+        maxBreath: tuning.combat.maxBreath,
+        lastShotAtMs: this.lastShotAt,
+        nowMs: time,
+        deltaMs: delta,
+        rechargeDelayMs: tuning.combat.rechargeDelayMs,
+        rechargePerSecond: tuning.combat.rechargePerSecond,
+      });
 
       if (time < this.invulnerableUntil) {
         this.player.setAlpha(Math.floor(time / 80) % 2 === 0 ? 0.34 : 1);
@@ -1126,11 +1403,11 @@ export function createAscentScene(
       else if (time < this.hitUntil) state = "hit";
       else if (time < this.landedUntil) state = "land";
       else if (firing) {
-        state = grounded
-          ? Math.abs(body.velocity.x) > 24
-            ? "fire-diagonal"
-            : "fire-up-ground"
-          : "fire-up-air";
+        state = this.lastShotWasDiagonal
+          ? "fire-diagonal"
+          : grounded
+            ? "fire-up-ground"
+            : "fire-up-air";
       }
       else if (!grounded) state = body.velocity.y < 0 ? "jump" : "fall";
       else if (Math.abs(body.velocity.x) > 8) state = "run";
@@ -1138,15 +1415,31 @@ export function createAscentScene(
     }
 
     private tryFire(time: number) {
-      if (time - this.lastShotAt < COMBAT.fireIntervalMs || this.breath < COMBAT.shotCost) return;
-      if (this.playerProjectiles.countActive(true) >= COMBAT.maxProjectiles) return;
+      const combat = this.tuning.combat;
+      if (time - this.lastShotAt < combat.fireIntervalMs) return;
+      const breathAfterShot = spendBreath(this.breath, combat.shotCost);
+      if (!breathAfterShot.spent) {
+        if (time >= this.nextEmptyBreathFeedbackAt) {
+          this.nextEmptyBreathFeedbackAt = time + combat.emptyBreathFeedbackMs;
+          this.statusText = "FIATO esaurito — attendi un istante";
+          this.emitAnnouncement(this.statusText);
+          this.emitSnapshot(true);
+        }
+        return;
+      }
+      if (this.playerProjectiles.countActive(true) >= combat.maxProjectiles) return;
       this.lastShotAt = time;
-      this.breath -= COMBAT.shotCost;
+      this.breath = breathAfterShot.breath;
       const body = this.player.body as Phaser.Physics.Arcade.Body;
       const grounded = body.blocked.down || body.touching.down;
-      const diagonal = grounded && Math.abs(body.velocity.x) > 24;
-      const direction = resolveFacingDirection(body.velocity.x, this.player.flipX);
-      const baseAngle = diagonal ? -90 + 35 * direction : -90;
+      const facingDirection = resolveFacingDirection(body.velocity.x, this.player.flipX);
+      const trajectory = resolveVerseTrajectory({
+        moveX: bridge.input.moveX,
+        facingDirection,
+        projectileSpeed: combat.projectileSpeed,
+      });
+      const { diagonal, direction, angleDegrees: baseAngle } = trajectory;
+      this.lastShotWasDiagonal = diagonal;
       const angles = time < this.rimaUntil ? [baseAngle - 10, baseAngle, baseAngle + 10] : [baseAngle];
       const socketX = this.player.x + (diagonal ? 20 : 10) * direction;
       const socketY = this.player.y - (grounded ? 48 : 46);
@@ -1163,7 +1456,7 @@ export function createAscentScene(
           .setDepth(11)
           .setRotation(radians + (recipe?.rotationOffset ?? Math.PI / 2))
           .setData({
-            expiresAt: time + COMBAT.projectileLifetimeMs,
+            expiresAt: time + combat.projectileLifetimeMs,
             bornAt: time,
             projectileKind: "verse",
             lastTrailAt: time,
@@ -1171,11 +1464,11 @@ export function createAscentScene(
         const projectileBody = projectile.body as Phaser.Physics.Arcade.Body;
         const hitbox = resolveVerseHitbox(angle, Boolean(recipe?.usesAtlas));
         this.setWorldHitbox(projectile, hitbox.width, hitbox.height);
-        projectileBody.setAllowGravity(false).setVelocity(
-          Math.cos(radians) * COMBAT.projectileSpeed,
-          Math.sin(radians) * COMBAT.projectileSpeed,
-        );
         this.playerProjectiles.add(projectile);
+        projectileBody.setAllowGravity(false).setVelocity(
+          Math.cos(radians) * combat.projectileSpeed,
+          Math.sin(radians) * combat.projectileSpeed,
+        );
       });
       this.emitAudio("verse");
     }
@@ -1192,9 +1485,18 @@ export function createAscentScene(
       this.enemies.getChildren().forEach((child) => {
         if (!isDynamicBodyObject(child) || !child.active) return;
         const body = child.body;
-        const distanceY = Math.abs(child.y - this.player.y);
-        if (distanceY > GAME_HEIGHT * 0.85) {
-          body.setVelocityX(0);
+        const enemyTuning = this.tuning.enemies;
+        const engaged = this.isActorEngaged(
+          child.y,
+          enemyTuning.engagementDistance,
+        );
+        if (!engaged) {
+          if (child.getData("kind") === "flyer" || child.getData("kind") === "sentry") {
+            body.setVelocity(0, 0);
+          } else {
+            body.setVelocityX(0);
+          }
+          child.setData("engaged", false);
           return;
         }
         const kind = child.getData("kind") as EnemyKind;
@@ -1203,7 +1505,7 @@ export function createAscentScene(
         const originY = child.getData("originY") as number;
         const seed = child.getData("seed") as number;
         const mechanics = CIRCLE_LEVELS[this.currentCircleIndex]?.mechanics ?? [];
-        const speedScale = bridge.assist ? 0.72 : 1;
+        const speedScale = enemyTuning.speedScale;
 
         if (kind === "flyer") {
           this.enemyVisuals.get(child as Phaser.Physics.Arcade.Sprite)?.play("move");
@@ -1215,14 +1517,26 @@ export function createAscentScene(
         } else if (kind === "sentry") {
           body.setVelocity(0, 0);
           const visual = this.enemyVisuals.get(child as Phaser.Physics.Arcade.Sprite);
+          if (!child.getData("engaged")) {
+            child.setData("engaged", true);
+            child.setData(
+              "nextAttackAt",
+              time + enemyTuning.sentry.firstAttackDelayMs,
+            );
+          }
           const nextAttackAt = child.getData("nextAttackAt") as number;
-          if (time >= nextAttackAt && Math.abs(child.y - this.player.y) < 460) {
-            child.setData("nextAttackAt", time + (bridge.assist ? 1_700 : 1_250));
+          if (time >= nextAttackAt) {
+            child.setData(
+              "nextAttackAt",
+              time + enemyTuning.sentry.intervalMs,
+            );
             // The shot belongs to gameplay time, not to the optional authored
             // animation. Resetting only the visual also re-arms its one-shot.
             visual?.reset("idle");
             visual?.play("attack");
-            this.time.delayedCall(SENTRY_ATTACK_WINDUP_MS, () => {
+            const targetX = this.player.x;
+            const targetY = this.player.y;
+            this.time.delayedCall(enemyTuning.sentry.windupMs, () => {
               if (!isBodyObject(child)) return;
               if (
                 !canReleaseTimedAttack({
@@ -1231,17 +1545,21 @@ export function createAscentScene(
                   hp: child.getData("hp") as number,
                   bodyEnabled: child.body.enable,
                   phase: this.phase,
-                })
+                }) ||
+                !this.isActorEngaged(
+                  child.y,
+                  this.tuning.enemies.engagementDistance,
+                )
               ) {
                 return;
               }
               this.fireHostileProjectile(
                 child.x,
                 child.y,
-                this.player.x,
-                this.player.y,
+                targetX,
+                targetY,
                 this.elapsedMs,
-                145,
+                this.tuning.enemies.sentry.projectileSpeed,
               );
               visual?.play("idle");
             });
@@ -1271,21 +1589,61 @@ export function createAscentScene(
       });
     }
 
+    private isActorEngaged(actorY: number, engagementDistance: number) {
+      return (
+        isWithinVerticalViewport({
+          actorY,
+          scrollY: this.cameras.main.scrollY,
+          viewportHeight: GAME_HEIGHT,
+        }) && Math.abs(actorY - this.player.y) <= engagementDistance
+      );
+    }
+
     private updateBosses(time: number) {
       this.bosses.getChildren().forEach((child) => {
         if (!isDynamicBodyObject(child) || !child.active) return;
         const id = child.getData("id") as BossId;
         const hp = child.getData("hp") as number;
         if (hp <= 0) return;
+        const bossTuning = this.tuning.bosses;
+        const engaged = this.isActorEngaged(
+          child.y,
+          bossTuning.engagementDistance,
+        );
         const active = child.getData("active") as boolean;
-        if (!active && Math.abs(child.y - this.player.y) < 480) {
+        if (!active && engaged) {
           child.setData("active", true);
+          child.setData("engaged", true);
+          child.setData("nextAttackAt", time + bossTuning.firstAttackDelayMs);
           this.activeBoss = child as Phaser.Physics.Arcade.Sprite;
+          const circleIndex = CIRCLE_LEVELS.findIndex((level) => level.boss === id);
+          const circleSpawn = this.circleSpawns.get(circleIndex);
+          this.bossCheckpointCircleIndex = circleIndex;
+          this.bossCheckpointSpawn =
+            this.resolveLastStableSpawn() ?? circleSpawn?.clone() ?? null;
+          this.breath = this.tuning.combat.maxBreath;
           this.emitAudio("boss-enter");
           this.bossVisuals.get(child as Phaser.Physics.Arcade.Sprite)?.play("move");
           this.emitAnnouncement(`${BOSS_NAMES[id]} custodisce il passaggio.`);
+          this.emitSnapshot(true);
         }
         if (!(child.getData("active") as boolean)) return;
+        if (!engaged) {
+          child.setData("engaged", false);
+          child.body.setVelocity(0, 0);
+          child.setData(
+            "nextAttackAt",
+            Math.max(
+              child.getData("nextAttackAt") as number,
+              time + bossTuning.firstAttackDelayMs,
+            ),
+          );
+          return;
+        }
+        if (!child.getData("engaged")) {
+          child.setData("engaged", true);
+          child.setData("nextAttackAt", time + bossTuning.firstAttackDelayMs);
+        }
 
         const maxHp = child.getData("maxHp") as number;
         const bossSprite = child as Phaser.Physics.Arcade.Sprite;
@@ -1294,7 +1652,7 @@ export function createAscentScene(
         const previousPhase = (child.getData("phase") as number | undefined) ?? 1;
         if (phase !== previousPhase) {
           child.setData("phase", phase);
-          child.setData("nextAttackAt", time + 620);
+          child.setData("nextAttackAt", time + bossTuning.phaseTransitionDelayMs);
           bossSprite.setTint(phase === 2 ? 0x39f4ff : 0xff4f73);
           this.time.delayedCall(260, () => {
             if (child.active) bossSprite.clearTint();
@@ -1304,7 +1662,7 @@ export function createAscentScene(
         }
         const originX = child.getData("originX") as number;
         const originY = child.getData("originY") as number;
-        const travel = phase === 1 ? 42 : phase === 2 ? 76 : 110;
+        const travel = bossTuning.phaseTravel[phase - 1];
         child.body.setVelocityX(Math.sin(time / (700 - phase * 90)) * travel);
         child.body.setVelocityY((originY - child.y) * 1.3);
         if (Math.abs(child.x - originX) > 145) child.x = originX + Math.sign(child.x - originX) * 145;
@@ -1312,36 +1670,49 @@ export function createAscentScene(
 
         const nextAttackAt = child.getData("nextAttackAt") as number;
         if (time >= nextAttackAt) {
-          child.setData("nextAttackAt", time + 520);
+          child.setData("nextAttackAt", time + bossTuning.telegraphMs + 100);
           bossSprite.setTint(0xffd166);
           this.bossVisuals.get(bossSprite)?.play("telegraph");
           this.vfx?.playAttached("boss-telegraph", bossSprite, { scale: 1.15 });
           this.emitAudio("boss-telegraph");
-          this.time.delayedCall(400, () => {
+          const targetX = this.player.x;
+          const targetY = this.player.y;
+          this.time.delayedCall(bossTuning.telegraphMs, () => {
             if (!isBodyObject(child)) return;
             if (
               !canReleaseTimedAttack({
                 actorActive: child.active,
                 defeated: Boolean(child.getData("defeated")),
                 hp: child.getData("hp") as number,
-                bodyEnabled: child.body.enable,
-                phase: this.phase,
-              })
-            ) {
-              return;
-            }
+                  bodyEnabled: child.body.enable,
+                  phase: this.phase,
+                }) ||
+                !this.isActorEngaged(
+                  child.y,
+                  this.tuning.bosses.engagementDistance,
+                )
+              ) {
+                child.setData(
+                  "nextAttackAt",
+                  this.elapsedMs + this.tuning.bosses.firstAttackDelayMs,
+                );
+                return;
+              }
             bossSprite.clearTint();
             this.bossVisuals.get(bossSprite)?.play("attack");
-            child.setData("nextAttackAt", this.elapsedMs + (bridge.assist ? 1_250 : 960) - phase * 90);
+            child.setData(
+              "nextAttackAt",
+              this.elapsedMs + this.tuning.bosses.phaseCooldownMs[phase - 1],
+            );
             const spread = phase === 1 ? [0] : phase === 2 ? [-34, 34] : [-52, 0, 52];
             spread.forEach((offset) => {
               this.fireHostileProjectile(
                 child.x,
                 child.y + 20,
-                this.player.x + offset,
-                this.player.y,
+                targetX + offset,
+                targetY,
                 this.elapsedMs,
-                (bridge.assist ? 130 : 165) + phase * 10,
+                this.tuning.bosses.phaseProjectileSpeed[phase - 1],
               );
             });
           });
@@ -1368,10 +1739,10 @@ export function createAscentScene(
         lastTrailAt: time,
       });
       this.setWorldHitbox(projectile, recipe?.usesAtlas ? 12 : 9, recipe?.usesAtlas ? 10 : 9);
+      this.hostileProjectiles.add(projectile);
       (projectile.body as Phaser.Physics.Arcade.Body)
         .setAllowGravity(false)
         .setVelocity(direction.x, direction.y);
-      this.hostileProjectiles.add(projectile);
     }
 
     private setWorldHitbox(
@@ -1380,9 +1751,13 @@ export function createAscentScene(
       worldHeight: number,
     ) {
       const body = projectile.body as Phaser.Physics.Arcade.Body;
-      const sourceWidth = worldWidth / Math.max(0.001, Math.abs(projectile.scaleX));
-      const sourceHeight = worldHeight / Math.max(0.001, Math.abs(projectile.scaleY));
-      body.setSize(sourceWidth, sourceHeight, true);
+      const sourceHitbox = resolveSourceHitbox(
+        worldWidth,
+        worldHeight,
+        projectile.scaleX,
+        projectile.scaleY,
+      );
+      body.setSize(sourceHitbox.width, sourceHitbox.height, true);
     }
 
     private updateProjectiles(time: number) {
@@ -1464,10 +1839,19 @@ export function createAscentScene(
         this.voices += 1;
         this.strofe = Math.floor(this.voices / 3);
         if (this.voices % 3 === 0) this.shield = true;
+        this.breath = restoreBreath(
+          this.breath,
+          this.tuning.combat.voiceBreathRestore,
+          this.tuning.combat.maxBreath,
+        );
       } else if (kind === "breath") {
-        this.breath = Math.min(COMBAT.maxBreath, this.breath + 46);
+        this.breath = restoreBreath(
+          this.breath,
+          46,
+          this.tuning.combat.maxBreath,
+        );
       } else if (kind === "rima") {
-        this.rimaUntil = this.elapsedMs + COMBAT.rimaDurationMs;
+        this.rimaUntil = this.elapsedMs + this.tuning.combat.rimaDurationMs;
       } else {
         this.shield = true;
       }
@@ -1536,6 +1920,7 @@ export function createAscentScene(
         this.bossGates.delete(id);
       }
       if (this.activeBoss === boss) this.activeBoss = null;
+      this.clearProjectiles();
       const bossVisual = this.bossVisuals.get(boss as Phaser.Physics.Arcade.Sprite);
       bossVisual?.play("defeat");
       const destroyBoss = () => {
@@ -1561,10 +1946,11 @@ export function createAscentScene(
       if (this.phase !== "playing" || this.elapsedMs < this.invulnerableUntil) return;
       if (this.shield) {
         this.shield = false;
-        this.invulnerableUntil = this.elapsedMs + (bridge.assist ? ASSIST_PLAYER.invulnerableMs : PLAYER.invulnerableMs);
+        this.invulnerableUntil =
+          this.elapsedMs + this.tuning.player.invulnerableMs;
         this.vfx?.playAttached("shield-break", this.player, { scale: 1.1 });
         this.emitAudio("shield-break");
-        if (isFall) this.respawnAtCheckpoint();
+        if (isFall) this.respawnAfterDamage();
         return;
       }
 
@@ -1581,7 +1967,7 @@ export function createAscentScene(
       playerBody.stop();
       playerBody.enable = false;
       this.player.setTint(0xff4f73).setAlpha(0.55);
-      this.clearThreatsNearCheckpoint();
+      this.clearThreatsNearRespawn();
       this.emitSnapshot(true);
 
       this.time.delayedCall(820, () => {
@@ -1596,18 +1982,46 @@ export function createAscentScene(
           return;
         }
         playerBody.enable = true;
-        this.respawnAtCheckpoint();
+        this.respawnAfterDamage();
         this.phase = "playing";
-        this.statusText = CIRCLE_LEVELS[this.checkpointActIndex * 3].title;
+        this.statusText = CIRCLE_LEVELS[this.currentCircleIndex].title;
         this.emitSnapshot(true);
       });
     }
 
-    private respawnAtCheckpoint() {
-      const spawn =
+    private getActCheckpointSpawn() {
+      return (
         this.checkpointSpawns.get(this.checkpointActIndex) ??
         this.checkpointSpawns.get(0) ??
-        new PhaserRuntime.Math.Vector2(GAME_WIDTH / 2, WORLD_HEIGHT - 80);
+        new PhaserRuntime.Math.Vector2(GAME_WIDTH / 2, WORLD_HEIGHT - 80)
+      );
+    }
+
+    private getDamageRespawnSpawn() {
+      if (bridge.assist) {
+        const stableSpawn = this.resolveLastStableSpawn();
+        if (stableSpawn) return stableSpawn;
+      }
+      if (
+        this.bossCheckpointSpawn &&
+        this.bossCheckpointCircleIndex === this.currentCircleIndex
+      ) {
+        return this.bossCheckpointSpawn;
+      }
+      return this.circleSpawns.get(this.currentCircleIndex) ?? this.getActCheckpointSpawn();
+    }
+
+    private respawnAtActCheckpoint() {
+      this.currentCircleIndex = this.checkpointActIndex * 3;
+      this.placePlayerAtSpawn(this.getActCheckpointSpawn());
+    }
+
+    private respawnAfterDamage() {
+      this.placePlayerAtSpawn(this.getDamageRespawnSpawn());
+    }
+
+    private placePlayerAtSpawn(spawn: Phaser.Math.Vector2) {
+      this.clearProjectiles();
       const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
       playerBody.enable = true;
       this.player.setPosition(spawn.x, spawn.y).setAlpha(1).clearTint();
@@ -1617,8 +2031,10 @@ export function createAscentScene(
       this.emitAudio("respawn");
       playerBody.reset(spawn.x, spawn.y);
       playerBody.setVelocity(0, 0);
-      this.invulnerableUntil = this.elapsedMs + (bridge.assist ? ASSIST_PLAYER.invulnerableMs : PLAYER.invulnerableMs);
-      this.breath = Math.max(this.breath, 48);
+      this.jumpWindowState = { ...INITIAL_JUMP_WINDOW_STATE, jumpCut: true };
+      this.invulnerableUntil =
+        this.elapsedMs + this.tuning.player.invulnerableMs;
+      this.breath = Math.max(this.breath, this.tuning.respawn.minimumBreath);
       bridge.input.moveX = 0;
       bridge.input.jumpPressed = false;
       bridge.input.jumpHeld = false;
@@ -1628,13 +2044,27 @@ export function createAscentScene(
       this.cameras.main.scrollY = cameraY;
     }
 
-    private clearThreatsNearCheckpoint() {
+    private clearProjectiles() {
+      this.playerProjectiles.clear(true, true);
       this.hostileProjectiles.clear(true, true);
-      const spawn = this.checkpointSpawns.get(this.checkpointActIndex);
+    }
+
+    private clearThreatsNearRespawn() {
+      this.clearProjectiles();
+      const spawn = this.getDamageRespawnSpawn();
       if (!spawn) return;
       this.enemies.getChildren().forEach((child) => {
         if (!isBodyObject(child)) return;
-        if (PhaserRuntime.Math.Distance.Between(child.x, child.y, spawn.x, spawn.y) < 105) child.destroy();
+        if (
+          PhaserRuntime.Math.Distance.Between(
+            child.x,
+            child.y,
+            spawn.x,
+            spawn.y,
+          ) < this.tuning.respawn.threatClearRadius
+        ) {
+          child.destroy();
+        }
       });
     }
 

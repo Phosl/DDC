@@ -95,8 +95,13 @@ export async function createRiseGame(
       if (destroyed) return;
       bridge.input = mergeGameInput(bridge.input, input);
     },
+    clearInput() {
+      if (destroyed) return;
+      bridge.input = { ...INITIAL_GAME_INPUT };
+    },
     pause(reason) {
       if (destroyed) return;
+      bridge.input = { ...INITIAL_GAME_INPUT };
       bridge.desiredRunning = false;
       bridge.scene?.pauseGame(reason);
     },
@@ -137,6 +142,15 @@ export async function createRiseGame(
               throw new Error("Cantica Zero is not ready for verification.");
             }
             return bridge.scene.verifyDamageRespawn();
+          },
+    readTelemetry:
+      process.env.NODE_ENV === "production"
+        ? undefined
+        : () => {
+            if (destroyed || !bridge.scene) {
+              throw new Error("Cantica Zero is not ready for telemetry.");
+            }
+            return bridge.scene.readTelemetry();
           },
     destroy() {
       if (destroyed) return;

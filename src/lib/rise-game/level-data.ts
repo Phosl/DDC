@@ -69,6 +69,29 @@ export interface CircleLevelDefinition {
   readonly route: readonly RouteNode[];
 }
 
+export interface LevelCurveBudget {
+  readonly fragile: number;
+  readonly horizontal: number;
+  readonly vertical: number;
+  readonly enemies: number;
+}
+
+/**
+ * The authored difficulty ramp. Counts refer to platform instances rather
+ * than occupied tiles; enemies excludes the three act custodians.
+ */
+export const LEVEL_CURVE: Readonly<Record<CircleId, LevelCurveBudget>> = Object.freeze({
+  IX: Object.freeze({ fragile: 1, horizontal: 1, vertical: 0, enemies: 3 }),
+  VIII: Object.freeze({ fragile: 2, horizontal: 2, vertical: 1, enemies: 4 }),
+  VII: Object.freeze({ fragile: 2, horizontal: 2, vertical: 2, enemies: 4 }),
+  VI: Object.freeze({ fragile: 2, horizontal: 2, vertical: 1, enemies: 4 }),
+  V: Object.freeze({ fragile: 2, horizontal: 3, vertical: 2, enemies: 5 }),
+  IV: Object.freeze({ fragile: 2, horizontal: 3, vertical: 2, enemies: 4 }),
+  III: Object.freeze({ fragile: 2, horizontal: 2, vertical: 1, enemies: 4 }),
+  II: Object.freeze({ fragile: 2, horizontal: 4, vertical: 3, enemies: 5 }),
+  I: Object.freeze({ fragile: 3, horizontal: 3, vertical: 2, enemies: 4 }),
+});
+
 export interface LevelValidationIssue {
   readonly code:
     | "level-count"
@@ -82,6 +105,7 @@ export interface LevelValidationIssue {
     | "pickup-count"
     | "checkpoint"
     | "boss"
+    | "difficulty-budget"
     | "route";
   readonly message: string;
   readonly levelId?: CircleId;
@@ -99,13 +123,20 @@ interface MarkerSpec extends RouteNode {
 }
 
 interface LevelLayoutSpec extends Omit<CircleLevelDefinition, "rows" | "route"> {
+  readonly routeRows?: readonly number[];
   readonly x: readonly number[];
   readonly kinds: readonly PlatformSymbol[];
+  readonly enemies: readonly RouteMarkerSpec[];
   readonly extras?: readonly PlatformSpec[];
 }
 
+interface RouteMarkerSpec {
+  readonly routeIndex: number;
+  readonly symbol: "E" | "F";
+  readonly offset?: number;
+}
+
 const ROUTE_ROWS = [62, 58, 54, 50, 46, 42, 38, 34, 30, 26, 22, 18, 14, 10, 6, 3] as const;
-const DEFAULT_KINDS = ["#", "-", "-", "H", "C", "-", "V", "-", "C", "H", "-", "V", "C", "-", "H", "#"] as const;
 
 const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
   {
@@ -116,9 +147,14 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     checkpoint: true,
     theme: "giudecca",
     mechanics: ["ice"],
-    x: [5, 8, 12, 16, 19, 15, 10, 6, 9, 14, 18, 15, 10, 6, 11, 16],
-    kinds: ["#", "-", "C", "H", "-", "C", "V", "-", "C", "H", "-", "V", "C", "-", "H", "#"],
-    extras: [{ column: 3, row: 44, width: 4, symbol: "C" }],
+    routeRows: [62, 59, 56, 53, 50, 47, 44, 40, 36, 32, 28, 24, 20, 16, 12, 9, 6, 3],
+    x: [5, 8, 11, 14, 17, 19, 16, 12, 8, 5, 9, 13, 17, 19, 15, 11, 14, 16],
+    kinds: ["#", "-", "-", "-", "-", "-", "-", "H", "-", "-", "-", "C", "-", "-", "-", "-", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 8, symbol: "E", offset: -1 },
+      { routeIndex: 11, symbol: "F", offset: 2 },
+    ],
   },
   {
     id: "VIII",
@@ -129,10 +165,12 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     theme: "giudecca",
     mechanics: ["false-platforms", "switches"],
     x: [17, 13, 8, 5, 9, 14, 18, 15, 10, 6, 9, 14, 19, 15, 10, 6],
-    kinds: ["#", "-", "C", "-", "H", "C", "-", "V", "C", "H", "-", "C", "V", "-", "H", "#"],
-    extras: [
-      { column: 20, row: 40, width: 3, symbol: "C" },
-      { column: 3, row: 24, width: 3, symbol: "-" },
+    kinds: ["#", "-", "-", "H", "C", "-", "-", "V", "-", "H", "-", "C", "-", "-", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 6, symbol: "E", offset: -1 },
+      { routeIndex: 10, symbol: "E", offset: 1 },
+      { routeIndex: 12, symbol: "F", offset: -2 },
     ],
   },
   {
@@ -145,7 +183,13 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     theme: "giudecca",
     mechanics: ["chains", "elevators"],
     x: [6, 10, 15, 19, 15, 10, 5, 9, 14, 18, 14, 9, 5, 10, 15, 12],
-    kinds: ["#", "V", "-", "H", "C", "-", "V", "H", "-", "C", "V", "-", "H", "C", "V", "#"],
+    kinds: ["#", "-", "-", "H", "C", "-", "V", "-", "H", "-", "C", "V", "-", "-", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 7, symbol: "E", offset: -1 },
+      { routeIndex: 9, symbol: "E", offset: 1 },
+      { routeIndex: 12, symbol: "F", offset: -2 },
+    ],
     extras: [{ column: 12, row: 2, width: 16, symbol: "-" }],
   },
   {
@@ -157,7 +201,13 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     theme: "dite",
     mechanics: ["gates", "tombs"],
     x: [12, 14, 9, 5, 8, 13, 18, 14, 9, 5, 10, 15, 19, 14, 9, 5],
-    kinds: DEFAULT_KINDS,
+    kinds: ["#", "-", "-", "H", "C", "-", "-", "V", "-", "H", "C", "-", "-", "-", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 7, symbol: "E", offset: -1 },
+      { routeIndex: 10, symbol: "E", offset: 1 },
+      { routeIndex: 13, symbol: "F", offset: -2 },
+    ],
     extras: [
       { column: 3, row: 36, width: 4, symbol: "#" },
       { column: 21, row: 20, width: 4, symbol: "#" },
@@ -172,8 +222,14 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     theme: "dite",
     mechanics: ["rafts", "knockback"],
     x: [5, 10, 15, 19, 14, 9, 5, 10, 15, 19, 14, 9, 5, 9, 14, 18],
-    kinds: ["#", "H", "H", "V", "-", "C", "H", "V", "-", "H", "C", "V", "H", "-", "V", "#"],
-    extras: [{ column: 12, row: 32, width: 5, symbol: "H" }],
+    kinds: ["#", "-", "H", "-", "V", "C", "H", "V", "-", "-", "C", "-", "H", "-", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 7, symbol: "E", offset: -1 },
+      { routeIndex: 10, symbol: "E", offset: 1 },
+      { routeIndex: 12, symbol: "F", offset: -2 },
+      { routeIndex: 14, symbol: "F", offset: 2 },
+    ],
   },
   {
     id: "IV",
@@ -185,7 +241,13 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     theme: "dite",
     mechanics: ["counterweights", "rolling-stones"],
     x: [17, 12, 7, 4, 9, 14, 19, 15, 10, 5, 9, 14, 18, 13, 8, 12],
-    kinds: ["#", "V", "-", "H", "C", "V", "-", "H", "C", "V", "-", "H", "C", "-", "V", "#"],
+    kinds: ["#", "-", "-", "H", "C", "V", "-", "H", "-", "V", "C", "H", "-", "-", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 7, symbol: "E", offset: -1 },
+      { routeIndex: 10, symbol: "E", offset: 1 },
+      { routeIndex: 12, symbol: "F", offset: -2 },
+    ],
     extras: [{ column: 12, row: 2, width: 16, symbol: "-" }],
   },
   {
@@ -197,8 +259,13 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     theme: "stelle",
     mechanics: ["sticky", "rain"],
     x: [12, 9, 14, 18, 14, 9, 5, 8, 13, 18, 15, 10, 6, 11, 16, 19],
-    kinds: ["#", "C", "-", "H", "C", "-", "V", "C", "H", "-", "C", "V", "-", "H", "C", "#"],
-    extras: [{ column: 3, row: 28, width: 3, symbol: "C" }],
+    kinds: ["#", "-", "-", "H", "C", "-", "-", "V", "H", "-", "C", "-", "-", "-", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 7, symbol: "E", offset: -1 },
+      { routeIndex: 10, symbol: "E", offset: 1 },
+      { routeIndex: 13, symbol: "F", offset: -2 },
+    ],
   },
   {
     id: "II",
@@ -209,10 +276,13 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     theme: "stelle",
     mechanics: ["wind"],
     x: [18, 14, 9, 5, 9, 14, 18, 15, 11, 6, 10, 15, 19, 15, 10, 6],
-    kinds: ["#", "H", "V", "H", "-", "V", "H", "C", "V", "H", "-", "V", "H", "C", "V", "#"],
-    extras: [
-      { column: 3, row: 48, width: 4, symbol: "H" },
-      { column: 21, row: 16, width: 4, symbol: "V" },
+    kinds: ["#", "H", "-", "H", "V", "-", "H", "C", "V", "-", "-", "H", "V", "C", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 6, symbol: "E", offset: -1 },
+      { routeIndex: 9, symbol: "E", offset: 1 },
+      { routeIndex: 12, symbol: "F", offset: -2 },
+      { routeIndex: 14, symbol: "F", offset: 2 },
     ],
   },
   {
@@ -225,7 +295,13 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     theme: "stelle",
     mechanics: ["memory-platforms"],
     x: [6, 11, 16, 19, 15, 10, 5, 9, 14, 18, 14, 9, 5, 10, 15, 12],
-    kinds: ["#", "-", "C", "H", "-", "C", "V", "-", "C", "H", "-", "V", "C", "-", "H", "#"],
+    kinds: ["#", "-", "-", "H", "C", "V", "-", "H", "-", "C", "V", "H", "C", "-", "-", "#"],
+    enemies: [
+      { routeIndex: 4, symbol: "E", offset: 1 },
+      { routeIndex: 7, symbol: "E", offset: -1 },
+      { routeIndex: 10, symbol: "E", offset: 1 },
+      { routeIndex: 12, symbol: "F", offset: -2 },
+    ],
     extras: [{ column: 12, row: 2, width: 18, symbol: "-" }],
   },
 ] as const;
@@ -248,7 +324,11 @@ function placeMarker(grid: string[][], marker: MarkerSpec) {
 
 function buildLevel(spec: LevelLayoutSpec): CircleLevelDefinition {
   const grid = Array.from({ length: LEVEL_ROWS }, () => Array<LevelSymbol>(LEVEL_COLUMNS).fill(" "));
-  const route = ROUTE_ROWS.map((row, index) => ({ column: spec.x[index], row }));
+  const routeRows = spec.routeRows ?? ROUTE_ROWS;
+  if (spec.x.length !== routeRows.length || spec.kinds.length !== routeRows.length) {
+    throw new Error(`Circle ${spec.id} needs one x coordinate and platform kind for every route row.`);
+  }
+  const route = routeRows.map((row, index) => ({ column: spec.x[index], row }));
 
   for (let row = 0; row < LEVEL_ROWS; row += 1) {
     grid[row][0] = "#";
@@ -278,21 +358,21 @@ function buildLevel(spec: LevelLayoutSpec): CircleLevelDefinition {
     symbol,
   });
 
+  const middleVoiceIndex = Math.floor(route.length / 2);
+  const upperVoiceIndex = route.length - 5;
+  const rimaIndex = Math.floor((route.length * 2) / 3);
+  const breathIndex = spec.boss ? route.length - 4 : 5;
+
   const markers: MarkerSpec[] = [
     markerAt(0, "S"),
     { column: route.at(-1)?.column ?? 12, row: 1, symbol: "X" },
     markerAt(3, "P", -1),
-    markerAt(8, "P", 1),
-    markerAt(13, "P", -1),
-    markerAt(5, "B", 1),
-    markerAt(10, "R", -1),
-    markerAt(12, "L", 1),
-    markerAt(4, "E", 1),
-    markerAt(7, "E", -1),
-    markerAt(11, "E", 1),
-    markerAt(14, "E", -1),
-    markerAt(6, "F", -2),
-    markerAt(9, "F", 2),
+    markerAt(middleVoiceIndex, "P", 1),
+    markerAt(upperVoiceIndex, "P", -1),
+    markerAt(breathIndex, "B", 1),
+    markerAt(rimaIndex, "R", -1),
+    markerAt(2, "L", 1),
+    ...spec.enemies.map((enemy) => markerAt(enemy.routeIndex, enemy.symbol, enemy.offset)),
   ];
   markers.forEach((marker) => placeMarker(grid, marker));
 
@@ -322,6 +402,13 @@ const EXPECTED_BOSSES = new Map<number, BossId>([
 
 function countSymbol(level: CircleLevelDefinition, symbol: LevelSymbol) {
   return level.rows.reduce((total, row) => total + [...row].filter((cell) => cell === symbol).length, 0);
+}
+
+function countFragilePlatforms(level: CircleLevelDefinition) {
+  return level.rows.reduce((total, row) => {
+    const runs = row.match(/C+/g);
+    return total + (runs?.length ?? 0);
+  }, 0);
 }
 
 export function getLevelWorldOffsetY(orderFromBottom: number) {
@@ -394,6 +481,24 @@ export function validateCircleLevels(levels: readonly CircleLevelDefinition[] = 
     }
     if (countSymbol(level, "P") !== 3) {
       issue({ code: "pickup-count", message: "Every circle must contain exactly three Voce fragments." });
+    }
+    const expectedCurve = LEVEL_CURVE[level.id];
+    const actualCurve = {
+      fragile: countFragilePlatforms(level),
+      horizontal: countSymbol(level, "H"),
+      vertical: countSymbol(level, "V"),
+      enemies: countSymbol(level, "E") + countSymbol(level, "F"),
+    };
+    if (
+      actualCurve.fragile !== expectedCurve.fragile ||
+      actualCurve.horizontal !== expectedCurve.horizontal ||
+      actualCurve.vertical !== expectedCurve.vertical ||
+      actualCurve.enemies !== expectedCurve.enemies
+    ) {
+      issue({
+        code: "difficulty-budget",
+        message: `Expected C/H/V/enemies ${expectedCurve.fragile}/${expectedCurve.horizontal}/${expectedCurve.vertical}/${expectedCurve.enemies}, received ${actualCurve.fragile}/${actualCurve.horizontal}/${actualCurve.vertical}/${actualCurve.enemies}.`,
+      });
     }
     if (level.checkpoint !== EXPECTED_CHECKPOINTS.has(arrayIndex)) {
       issue({ code: "checkpoint", message: `Unexpected checkpoint setting at position ${arrayIndex}.` });

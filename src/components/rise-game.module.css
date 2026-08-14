@@ -699,3 +699,184 @@
     transform: none;
   }
 }
+
+@media (min-width: 64rem) and (pointer: fine) {
+  .game[data-display-mode="native-fullscreen"],
+  .game[data-display-mode="viewport-fullscreen"] {
+    --game-canvas-width: min(100vw, calc(100dvh * 4 / 7));
+    --game-side-width: calc((100vw - var(--game-canvas-width)) / 2);
+    position: fixed;
+    z-index: 2147483000;
+    inset: 0;
+    display: block;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    box-sizing: border-box;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+    background: var(--game-black);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .toolbar,
+  .game[data-display-mode="viewport-fullscreen"] .toolbar {
+    position: absolute;
+    z-index: 20;
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+    display: flex;
+    width: min(35rem, calc(var(--game-side-width) - 1.5rem));
+    justify-content: flex-end;
+    margin: 0;
+    padding: 0.5rem;
+    background: rgba(8, 8, 8, 0.74);
+    backdrop-filter: blur(8px);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .hud,
+  .game[data-display-mode="viewport-fullscreen"] .hud {
+    position: absolute;
+    z-index: 20;
+    top: max(0.75rem, env(safe-area-inset-top));
+    left: max(0.75rem, env(safe-area-inset-left));
+    display: grid;
+    width: min(34rem, calc(var(--game-side-width) - 1.5rem));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    background: rgba(8, 8, 8, 0.82);
+    backdrop-filter: blur(8px);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .hudMetric,
+  .game[data-display-mode="viewport-fullscreen"] .hudMetric {
+    min-height: 3.5rem;
+    padding: 0.62rem;
+  }
+
+  .game[data-display-mode="native-fullscreen"] .hudMetric strong,
+  .game[data-display-mode="viewport-fullscreen"] .hudMetric strong {
+    font-size: clamp(0.82rem, 1.25vw, 1.05rem);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .stage,
+  .game[data-display-mode="viewport-fullscreen"] .stage {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    display: block;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    box-sizing: border-box;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .game[data-display-mode="native-fullscreen"] .canvasHost canvas,
+  .game[data-display-mode="viewport-fullscreen"] .canvasHost canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--game-canvas-width) !important;
+    height: min(100dvh, calc(100vw * 7 / 4)) !important;
+    margin: 0 !important;
+    object-fit: contain;
+    transform: translate(-50%, -50%);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .chapter,
+  .game[data-display-mode="viewport-fullscreen"] .chapter {
+    top: clamp(5.3rem, 13vh, 7.2rem);
+    right: 50%;
+    left: auto;
+    width: min(24rem, 44vw);
+    box-sizing: border-box;
+    transform: translateX(50%);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .breath,
+  .game[data-display-mode="viewport-fullscreen"] .breath {
+    top: clamp(8.9rem, 20vh, 10.8rem);
+    right: 50%;
+    left: auto;
+    width: min(22rem, 40vw);
+    transform: translateX(50%);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .bossBar,
+  .game[data-display-mode="viewport-fullscreen"] .bossBar {
+    top: clamp(10.4rem, 24vh, 12.3rem);
+    right: 50%;
+    left: auto;
+    width: min(22rem, 40vw);
+    transform: translateX(50%);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .touchControls,
+  .game[data-display-mode="viewport-fullscreen"] .touchControls,
+  .game[data-display-mode="native-fullscreen"] .rotateNote,
+  .game[data-display-mode="viewport-fullscreen"] .rotateNote {
+    display: none;
+  }
+
+  .game[data-display-mode="native-fullscreen"] .statusLine,
+  .game[data-display-mode="viewport-fullscreen"] .statusLine {
+    position: absolute;
+    z-index: 20;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    left: max(0.75rem, env(safe-area-inset-left));
+    display: flex;
+    width: min(32rem, calc(var(--game-side-width) - 1.5rem));
+    box-sizing: border-box;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.7rem;
+    margin: 0;
+    padding: 0.82rem;
+    border: 1px solid var(--game-line);
+    background: rgba(8, 8, 8, 0.78);
+    backdrop-filter: blur(8px);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .instructions,
+  .game[data-display-mode="viewport-fullscreen"] .instructions {
+    position: absolute;
+    z-index: 20;
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    display: grid;
+    width: min(36rem, calc(var(--game-side-width) - 1.5rem));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    box-sizing: border-box;
+    padding: 0;
+    border-top: 1px solid var(--game-line);
+    border-left: 1px solid var(--game-line);
+    background: rgba(8, 8, 8, 0.78);
+    backdrop-filter: blur(8px);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .instructions div,
+  .game[data-display-mode="viewport-fullscreen"] .instructions div {
+    min-height: 3.5rem;
+    padding: 0.58rem;
+    border-right: 1px solid var(--game-line);
+    border-bottom: 1px solid var(--game-line);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .audioNotice,
+  .game[data-display-mode="viewport-fullscreen"] .audioNotice {
+    position: absolute;
+    z-index: 21;
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: 5.5rem;
+    width: min(32rem, calc(var(--game-side-width) - 1.5rem));
+    margin: 0;
+    padding: 0.55rem;
+    background: rgba(8, 8, 8, 0.84);
+  }
+}

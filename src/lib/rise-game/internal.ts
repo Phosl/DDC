@@ -1,4 +1,9 @@
-import type { GameEvent, GameInput, GameSnapshot } from "./types";
+import type {
+  GameEvent,
+  GameInput,
+  GameSnapshot,
+  GameTelemetry,
+} from "./types";
 
 export type SceneRestartMode = "full-run" | "continue-act";
 
@@ -10,6 +15,7 @@ export interface AscentSceneHandle {
   setReducedMotion(enabled: boolean): void;
   verifyCampaign(): GameSnapshot;
   verifyDamageRespawn(): Promise<GameSnapshot>;
+  readTelemetry(): GameTelemetry;
 }
 
 export type RuntimeBridge = {

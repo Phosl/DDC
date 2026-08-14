@@ -21,7 +21,7 @@ The three environment atlases share this brief: original 16-bit side-scrolling p
 
 The v3 runtime atlases are original DDC productions generated with the built-in ImageGen mode, then normalized locally with nearest-neighbour scaling and chroma-key transparency. The source images remain in the Codex generated-images archive; project-bound runtime assets live under `public/game/v3/`.
 
-- `actors/davide-body.png`: body-only 6×4 atlas based on the approved Davide reference sheet. Identity, clothing and microphone are preserved while beams, dust, letters and particles are deliberately excluded.
+- `actors/davide-body.png`: 6×4 action atlas based on the latest approved Davide reference sheet. The frame order is idle, run, jump/land, three Verse directions, hit, defeat and respawn. Small pose-specific accents from the approved sheet are retained; projectile travel, impacts and gameplay VFX remain detached.
 - `actors/enemy-bodies.png`: four original Rumore animation families—masked walker, speaker roller, sentry and flyer—without impact or defeat particles.
 - `actors/boss-bodies.png`: Minotauro, Pluto and Caronte split into idle, move, telegraph, attack, hit and defeat body poses. Dissolution is not embedded in the bodies.
 - `effects/cantica-vfx-atlas.png`: 24 isolated abstract voice, noise, landing, pickup, fracture, respawn and finale effects. Explosions are rendered as typographic light, ink and fragments rather than weapons, fire, blood or gore.
@@ -32,6 +32,6 @@ Normalization is reproducible with `scripts/process-game-atlas.mjs`. It validate
 
 Davide's production action atlas and the earlier five animation studies (`idle`, `run`, `rise`, `verse`, `hit`) were generated from the project's supplied portraits as identity references. Locked traits: short curls and fade, trimmed beard, square sunglasses, black oversized T-shirt, chain, grey jeans, tattoos, and a microphone. The prompt explicitly prohibited weapons, logos, military poses, and imitation of existing characters.
 
-The runtime uses `public/game/v3/actors/davide-body.png`: 24 body-only frames covering idle, run, jump, fall, landing, ground/air Verse, diagonal Verse, hit, defeat, and respawn. Its detached muzzle, projectile, impact, landing, damage, dissolve and respawn effects come from `public/game/v3/effects/cantica-vfx-atlas.png`.
+The runtime uses `public/game/v3/actors/davide-body.png`: 24 ordered action frames covering idle, run, jump, fall, landing, ground/air Verse, diagonal Verse, hit, defeat, and respawn. The production frame map omits two source poses whose baked accents displace the body anchor; the aligned poses are paired with the detached VFX atlas instead. Projectile travel, impacts, damage, dissolve and the main respawn effects still come from `public/game/v3/effects/cantica-vfx-atlas.png`.
 
 All generated masters were post-processed locally for transparent backgrounds and integrated through typed frame maps with fixed pivots. The files under `public/game/v3/` are the current Phaser production atlases; earlier v2 strips remain as documented visual studies and fallback provenance.
