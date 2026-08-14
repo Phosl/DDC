@@ -37,9 +37,12 @@ locali separati.
 
 - Movimento: `A/D` oppure `←/→`
 - Salto variabile: `W`, `↑` oppure `Spazio`
-- Verso: `J` oppure `X`
+- Verso da tastiera: `J` oppure `X`
+- Joypad: stick sinistro per muoversi, `A/✕` per saltare, stick destro per
+  mirare a 360°, `R2/RB` per lanciare Versi e `Start` per la pausa
 - Pausa: `P` oppure `Esc`
 
-Su schermi touch gli stessi comandi sono disponibili come quattro pulsanti
-multi-touch. Grafica, personaggi e suoni sono originali; i riferimenti ai giochi
-arcade anni Novanta riguardano esclusivamente ritmo e leggibilità dell’azione.
+Su schermi touch, movimento e salto restano pulsanti multi-touch; lo stick destro
+virtuale mira a 360° e lancia Versi finché viene tenuto inclinato. Grafica,
+personaggi e suoni sono originali; i riferimenti ai giochi arcade anni Novanta
+riguardano esclusivamente ritmo e leggibilità dell’azione.

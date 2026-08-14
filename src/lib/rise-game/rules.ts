@@ -1,4 +1,35 @@
-import type { GameInput } from "./types";
+import type { AimVector, GameInput } from "./types";
+
+export const DEFAULT_AIM_DEADZONE = 0.24;
+
+function finiteAimComponent(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return value;
+}
+
+/**
+ * Converts a stick/pointer vector into a stable unit direction. A null result
+ * deliberately means "use the contextual keyboard aim" throughout the game.
+ */
+export function normalizeAimVector(
+  aim: Readonly<AimVector> | null | undefined,
+  deadzone = DEFAULT_AIM_DEADZONE,
+): AimVector | null {
+  if (!aim) return null;
+
+  const x = finiteAimComponent(aim.x);
+  const y = finiteAimComponent(aim.y);
+  const magnitude = Math.hypot(x, y);
+  const safeDeadzone = Number.isFinite(deadzone)
+    ? Math.max(0, Math.min(1, deadzone))
+    : DEFAULT_AIM_DEADZONE;
+
+  if (!Number.isFinite(magnitude) || magnitude <= safeDeadzone || magnitude === 0) {
+    return null;
+  }
+
+  return { x: x / magnitude, y: y / magnitude };
+}
 
 const INPUT_EDGE_KEYS = ["jumpPressed", "firePressed", "pausePressed"] as const;
 
@@ -11,6 +42,7 @@ export function mergeGameInput(
   const next: GameInput = { ...current };
 
   if (patch.moveX !== undefined) next.moveX = patch.moveX;
+  if (patch.aim !== undefined) next.aim = normalizeAimVector(patch.aim);
   if (patch.jumpHeld !== undefined) next.jumpHeld = patch.jumpHeld;
   if (patch.fireHeld !== undefined) next.fireHeld = patch.fireHeld;
 
@@ -131,6 +163,8 @@ type VerseTrajectoryOptions = Readonly<{
   moveX: -1 | 0 | 1;
   facingDirection: -1 | 1;
   projectileSpeed: number;
+  aim?: AimVector | null;
+  aimDeadzone?: number;
 }>;
 
 export type VerseTrajectory = Readonly<{
@@ -145,10 +179,26 @@ export function resolveVerseTrajectory({
   moveX,
   facingDirection,
   projectileSpeed,
+  aim = null,
+  aimDeadzone = DEFAULT_AIM_DEADZONE,
 }: VerseTrajectoryOptions): VerseTrajectory {
-  const diagonal = moveX !== 0;
-  const direction = moveX === 0 ? facingDirection : moveX;
-  const angleDegrees = diagonal ? -90 + 35 * direction : -90;
+  const normalizedAim = normalizeAimVector(aim, aimDeadzone);
+  const legacyDirection = moveX === 0 ? facingDirection : moveX;
+  const direction = normalizedAim
+    ? normalizedAim.x < -Number.EPSILON
+      ? -1
+      : normalizedAim.x > Number.EPSILON
+        ? 1
+        : facingDirection
+    : legacyDirection;
+  const angleDegrees = normalizedAim
+    ? (Math.atan2(normalizedAim.y, normalizedAim.x) * 180) / Math.PI
+    : moveX === 0
+      ? -90
+      : -90 + 35 * direction;
+  const diagonal = normalizedAim
+    ? Math.abs(normalizedAim.x) > Number.EPSILON
+    : moveX !== 0;
   const radians = (angleDegrees * Math.PI) / 180;
   const safeSpeed = Number.isFinite(projectileSpeed) ? Math.max(0, projectileSpeed) : 0;
 
@@ -156,8 +206,8 @@ export function resolveVerseTrajectory({
     diagonal,
     direction,
     angleDegrees,
-    velocityX: Math.cos(radians) * safeSpeed,
-    velocityY: Math.sin(radians) * safeSpeed,
+    velocityX: normalizedAim ? normalizedAim.x * safeSpeed : Math.cos(radians) * safeSpeed,
+    velocityY: normalizedAim ? normalizedAim.y * safeSpeed : Math.sin(radians) * safeSpeed,
   };
 }
 

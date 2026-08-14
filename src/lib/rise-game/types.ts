@@ -6,8 +6,17 @@ export type GamePhase =
   | "game-over"
   | "complete";
 
+export type AimVector = Readonly<{
+  x: number;
+  y: number;
+}>;
+
+/** `null` keeps the contextual keyboard trajectory (up or 35-degree diagonal). */
+export const NEUTRAL_AIM: null = null;
+
 export type GameInput = {
   moveX: -1 | 0 | 1;
+  aim: AimVector | null;
   jumpPressed: boolean;
   jumpHeld: boolean;
   firePressed: boolean;
@@ -17,6 +26,7 @@ export type GameInput = {
 
 export const INITIAL_GAME_INPUT: Readonly<GameInput> = {
   moveX: 0,
+  aim: NEUTRAL_AIM,
   jumpPressed: false,
   jumpHeld: false,
   firePressed: false,
@@ -55,6 +65,7 @@ export type GameTelemetry = Readonly<{
   phase: GamePhase;
   breath: number;
   circleId: string;
+  aim: AimVector | null;
   player: Readonly<{
     x: number;
     y: number;
@@ -68,6 +79,14 @@ export type GameTelemetry = Readonly<{
     velocityX: number | null;
     velocityY: number | null;
   }>;
+  lastShot: Readonly<{
+    sequence: number;
+    originX: number;
+    originY: number;
+    velocityX: number;
+    velocityY: number;
+    angleDegrees: number;
+  }> | null;
 }>;
 
 export const GAME_AUDIO_CUES = [

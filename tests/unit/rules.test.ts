@@ -12,6 +12,7 @@ import {
   consumeLife,
   isWithinVerticalViewport,
   mergeGameInput,
+  normalizeAimVector,
   recoverBreath,
   reachActCheckpoint,
   resolveJumpFrame,
@@ -44,6 +45,7 @@ describe("input rules", () => {
     expect(initial).toEqual(INITIAL_GAME_INPUT);
     expect(releasedBeforeTick).toMatchObject({
       moveX: 0,
+      aim: null,
       jumpHeld: false,
       jumpPressed: true,
       firePressed: true,
@@ -68,6 +70,7 @@ describe("input rules", () => {
     });
     expect(consumed.next).toEqual({
       moveX: -1,
+      aim: null,
       jumpHeld: true,
       fireHeld: true,
       jumpPressed: false,
@@ -75,6 +78,18 @@ describe("input rules", () => {
       pausePressed: false,
     });
     expect(input.jumpPressed).toBe(true);
+  });
+
+  it("normalizes an aim patch atomically and clears it back to keyboard fallback", () => {
+    const aimed = mergeGameInput(INITIAL_GAME_INPUT, {
+      aim: { x: 3, y: -4 },
+    });
+    const cleared = mergeGameInput(aimed, { aim: null });
+
+    expect(aimed.aim).toEqual({ x: 0.6, y: -0.8 });
+    expect(cleared.aim).toBeNull();
+    expect(normalizeAimVector({ x: 0.1, y: -0.1 })).toBeNull();
+    expect(INITIAL_GAME_INPUT.aim).toBeNull();
   });
 });
 
@@ -202,6 +217,46 @@ describe("Verse and FIATO rules", () => {
     });
     expect(diagonal.velocityX).toBeGreaterThan(0);
     expect(diagonal.velocityY).toBeLessThan(0);
+  });
+
+  it.each([
+    ["right", { x: 1, y: 0 }, 0, 1],
+    ["down-right", { x: 1, y: 1 }, 45, 1],
+    ["down", { x: 0, y: 1 }, 90, -1],
+    ["down-left", { x: -1, y: 1 }, 135, -1],
+    ["left", { x: -1, y: 0 }, 180, -1],
+    ["up-left", { x: -1, y: -1 }, -135, -1],
+    ["up", { x: 0, y: -1 }, -90, -1],
+    ["up-right", { x: 1, y: -1 }, -45, 1],
+  ] as const)("resolves %s as a constant-speed 360-degree trajectory", (_name, aim, angle, direction) => {
+    const trajectory = resolveVerseTrajectory({
+      moveX: 0,
+      facingDirection: -1,
+      projectileSpeed: 460,
+      aim,
+    });
+
+    expect(trajectory.angleDegrees).toBeCloseTo(angle, 8);
+    expect(trajectory.direction).toBe(direction);
+    expect(Math.hypot(trajectory.velocityX, trajectory.velocityY)).toBeCloseTo(460, 8);
+  });
+
+  it("keeps contextual keyboard aim when a stick is neutral or inside its dead zone", () => {
+    const neutral = resolveVerseTrajectory({
+      moveX: -1,
+      facingDirection: 1,
+      projectileSpeed: 460,
+      aim: null,
+    });
+    const noisyStick = resolveVerseTrajectory({
+      moveX: -1,
+      facingDirection: 1,
+      projectileSpeed: 460,
+      aim: { x: 0.1, y: -0.1 },
+    });
+
+    expect(neutral).toMatchObject({ angleDegrees: -125, direction: -1 });
+    expect(noisyStick).toEqual(neutral);
   });
 
   it("spends, delays, recovers and caps FIATO deterministically", () => {

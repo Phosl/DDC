@@ -15,7 +15,20 @@ export {
   validateCircleLevels,
   worldYToQuota,
 } from "./level-data";
-export { GAME_AUDIO_CUES, INITIAL_GAME_INPUT } from "./types";
+export { GAME_AUDIO_CUES, INITIAL_GAME_INPUT, NEUTRAL_AIM } from "./types";
+export {
+  DEFAULT_GAMEPAD_AIM_DEADZONE,
+  DEFAULT_GAMEPAD_MOVE_DEADZONE,
+  DEFAULT_GAMEPAD_TRIGGER_THRESHOLD,
+  NEUTRAL_GAMEPAD_FRAME,
+  areGamepadControlFramesEqual,
+  readStandardGamepadFrame,
+} from "./gamepad-input";
+export type {
+  GamepadButtonLike,
+  GamepadControlFrame,
+  StandardGamepadLike,
+} from "./gamepad-input";
 export type {
   ActIndex,
   BossId,
@@ -29,6 +42,7 @@ export type {
   RouteNode,
 } from "./level-data";
 export type {
+  AimVector,
   BossSnapshot,
   CreateRiseGameOptions,
   GameAudioCue,
@@ -37,4 +51,5 @@ export type {
   GameInput,
   GamePhase,
   GameSnapshot,
+  GameTelemetry,
 } from "./types";

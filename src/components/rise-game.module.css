@@ -296,9 +296,9 @@
 .touchControls {
   position: absolute;
   z-index: 4;
-  right: 0.62rem;
-  bottom: 0.7rem;
-  left: 0.62rem;
+  right: max(0.62rem, env(safe-area-inset-right));
+  bottom: max(0.7rem, calc(env(safe-area-inset-bottom) + 0.2rem));
+  left: max(0.62rem, env(safe-area-inset-left));
   display: none;
   align-items: end;
   justify-content: space-between;
@@ -330,16 +330,86 @@
   font-size: 1.2rem;
 }
 
-.actionPad button:first-child {
+.jumpButton {
   min-width: 3.8rem;
   border-color: var(--game-acid);
   color: var(--game-acid);
 }
 
-.actionPad button:last-child {
-  min-width: 3.8rem;
-  border-color: var(--game-cyan);
+.aimJoystick {
+  --aim-x: 0;
+  --aim-y: 0;
+  position: relative;
+  width: 5.35rem;
+  min-width: 5.35rem !important;
+  height: 5.35rem;
+  min-height: 5.35rem !important;
+  overflow: hidden;
+  border-color: var(--game-cyan) !important;
+  border-radius: 50% !important;
+  background:
+    radial-gradient(circle, rgba(39, 224, 209, 0.12) 0 7%, transparent 8%),
+    rgba(8, 8, 8, 0.78) !important;
   color: var(--game-cyan);
+  isolation: isolate;
+}
+
+.aimJoystick::before,
+.aimJoystick::after {
+  position: absolute;
+  z-index: 0;
+  content: "";
+  background: rgba(39, 224, 209, 0.24);
+  pointer-events: none;
+}
+
+.aimJoystick::before {
+  top: 50%;
+  right: 0.52rem;
+  left: 0.52rem;
+  height: 1px;
+}
+
+.aimJoystick::after {
+  top: 0.52rem;
+  bottom: 0.52rem;
+  left: 50%;
+  width: 1px;
+}
+
+.aimJoystick > span {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: 0.68rem;
+  left: 0;
+  color: rgba(39, 224, 209, 0.78);
+  font-size: 0.42rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.aimJoystick > i {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--game-black);
+  border-radius: 50%;
+  background: var(--game-cyan);
+  box-shadow: 0 0 0 2px rgba(39, 224, 209, 0.34);
+  transform: translate(
+    calc(-50% + var(--aim-x) * 1.58rem),
+    calc(-50% + var(--aim-y) * 1.58rem)
+  );
+  pointer-events: none;
+}
+
+.aimJoystick[data-active="true"] {
+  box-shadow: 0 0 0 3px rgba(39, 224, 209, 0.18);
 }
 
 .touchControls button:active,
@@ -634,6 +704,13 @@
     min-height: 3.15rem;
   }
 
+  .aimJoystick {
+    width: 4.85rem;
+    min-width: 4.85rem !important;
+    height: 4.85rem;
+    min-height: 4.85rem !important;
+  }
+
   .chapter {
     font-size: 0.43rem;
   }
@@ -662,9 +739,9 @@
   }
 
   .touchControls {
-    right: 0.28rem;
-    bottom: 0.28rem;
-    left: 0.28rem;
+    right: max(0.28rem, env(safe-area-inset-right));
+    bottom: max(0.28rem, env(safe-area-inset-bottom));
+    left: max(0.28rem, env(safe-area-inset-left));
   }
 
   .touchControls button {
@@ -679,9 +756,22 @@
     gap: 0.2rem;
   }
 
-  .actionPad button:first-child,
-  .actionPad button:last-child {
+  .jumpButton {
     min-width: 3.15rem;
+  }
+
+  .aimJoystick {
+    width: 3.85rem;
+    min-width: 3.85rem !important;
+    height: 3.85rem;
+    min-height: 3.85rem !important;
+  }
+
+  .aimJoystick > i {
+    transform: translate(
+      calc(-50% + var(--aim-x) * 1.05rem),
+      calc(-50% + var(--aim-y) * 1.05rem)
+    );
   }
 }
 
@@ -697,6 +787,10 @@
   .touchControls button:active,
   .touchControls button:focus-visible {
     transform: none;
+  }
+
+  .aimJoystick > i {
+    transition: none;
   }
 }
 

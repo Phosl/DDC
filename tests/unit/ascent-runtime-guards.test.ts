@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   canReleaseTimedAttack,
+  isDirectionalVerseAngle,
   resolveStablePlatformPosition,
   resolveSourceHitbox,
   resolveVerseHitbox,
+  resolveAimFacingDirection,
   resolveFacingDirection,
 } from "../../src/lib/rise-game/ascent-scene";
 
@@ -31,6 +33,9 @@ describe("ascent timed attack guards", () => {
     expect(resolveFacingDirection(-160, false)).toBe(-1);
     expect(resolveFacingDirection(0, true)).toBe(-1);
     expect(resolveFacingDirection(0, false)).toBe(1);
+    expect(resolveAimFacingDirection({ x: -0.8, y: 0.2 }, 160, false)).toBe(-1);
+    expect(resolveAimFacingDirection({ x: 0.8, y: 0.2 }, -160, true)).toBe(1);
+    expect(resolveAimFacingDirection({ x: 0.05, y: -1 }, -160, false)).toBe(-1);
   });
 
   it("rotates the Verse collision box with vertical and diagonal shots", () => {
@@ -41,6 +46,18 @@ describe("ascent timed attack guards", () => {
     expect(diagonal.width).toBeCloseTo(15.73, 1);
     expect(diagonal.height).toBeCloseTo(17.7, 1);
     expect(resolveVerseHitbox(-90, false)).toEqual({ width: 7, height: 14 });
+    expect(resolveVerseHitbox(0, false)).toEqual({ width: 14, height: 7 });
+    const downLeft = resolveVerseHitbox(135, false);
+    expect(downLeft.width).toBeCloseTo(14.85, 1);
+    expect(downLeft.height).toBeCloseTo(14.85, 1);
+  });
+
+  it("uses the directional firing pose for horizontal and downward aim", () => {
+    expect(isDirectionalVerseAngle(-90)).toBe(false);
+    expect(isDirectionalVerseAngle(-84)).toBe(false);
+    expect(isDirectionalVerseAngle(0)).toBe(true);
+    expect(isDirectionalVerseAngle(90)).toBe(true);
+    expect(isDirectionalVerseAngle(180)).toBe(true);
   });
 
   it("converts the authored sprite scale into a real 22x32 world hitbox", () => {

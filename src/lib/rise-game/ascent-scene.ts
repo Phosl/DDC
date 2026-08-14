@@ -36,6 +36,7 @@ import type {
   GameAudioCue,
   GamePhase,
   GameSnapshot,
+  GameTelemetry,
 } from "./types";
 import {
   createBossVisualController,
@@ -120,15 +121,37 @@ export function resolveFacingDirection(velocityX: number, flipX: boolean): -1 | 
   return flipX ? -1 : 1;
 }
 
+export function resolveAimFacingDirection(
+  aim: Readonly<{ x: number; y: number }> | null | undefined,
+  velocityX: number,
+  flipX: boolean,
+): -1 | 1 {
+  if (aim && Number.isFinite(aim.x) && Math.abs(aim.x) >= 0.12) {
+    return aim.x < 0 ? -1 : 1;
+  }
+  return resolveFacingDirection(velocityX, flipX);
+}
+
 export function resolveVerseHitbox(angleDegrees: number, usesAtlas: boolean) {
-  if (!usesAtlas) return { width: 7, height: 14 };
   const radians = (angleDegrees * Math.PI) / 180;
-  const cosine = Math.abs(Math.cos(radians));
-  const sine = Math.abs(Math.sin(radians));
+  const rawCosine = Math.abs(Math.cos(radians));
+  const rawSine = Math.abs(Math.sin(radians));
+  const cosine = rawCosine < 1e-10 ? 0 : rawCosine;
+  const sine = rawSine < 1e-10 ? 0 : rawSine;
+  const longSide = usesAtlas ? 16 : 14;
+  const shortSide = usesAtlas ? 8 : 7;
   return {
-    width: 16 * cosine + 8 * sine,
-    height: 16 * sine + 8 * cosine,
+    width: longSide * cosine + shortSide * sine,
+    height: longSide * sine + shortSide * cosine,
   };
+}
+
+export function isDirectionalVerseAngle(angleDegrees: number) {
+  if (!Number.isFinite(angleDegrees)) return false;
+  const degreesFromUp = Math.abs(
+    ((((angleDegrees + 90) + 180) % 360) + 360) % 360 - 180,
+  );
+  return degreesFromUp > 12;
 }
 
 export function resolveSourceHitbox(
@@ -243,7 +266,9 @@ export function createAscentScene(
     private rimaUntil = 0;
     private invulnerableUntil = 0;
     private lastShotAt = -Infinity;
-    private lastShotWasDiagonal = false;
+    private lastShotWasDirectional = false;
+    private lastShotSequence = 0;
+    private lastShotTelemetry: GameTelemetry["lastShot"] = null;
     private lastSnapshotAt = -Infinity;
     private jumpWindowState: JumpWindowState = {
       ...INITIAL_JUMP_WINDOW_STATE,
@@ -261,6 +286,7 @@ export function createAscentScene(
     private activeBoss: Phaser.Physics.Arcade.Sprite | null = null;
     private phaseBeforePause: GamePhase = "playing";
     private player!: Phaser.Physics.Arcade.Sprite;
+    private aimReticle: Phaser.GameObjects.Arc | null = null;
     private authoredPlayer = false;
     private playerVisual: ActorVisualController<PlayerVisualState> | null = null;
     private enemyVisuals = new Map<Phaser.Physics.Arcade.Sprite, EnemyVisualController>();
@@ -314,7 +340,9 @@ export function createAscentScene(
       this.rimaUntil = 0;
       this.invulnerableUntil = 0;
       this.lastShotAt = -Infinity;
-      this.lastShotWasDiagonal = false;
+      this.lastShotWasDirectional = false;
+      this.lastShotSequence = 0;
+      this.lastShotTelemetry = null;
       this.lastSnapshotAt = -Infinity;
       this.jumpWindowState = { ...INITIAL_JUMP_WINDOW_STATE, jumpCut: true };
       this.nextEmptyBreathFeedbackAt = -Infinity;
@@ -328,6 +356,7 @@ export function createAscentScene(
       this.bestMs = readBestTime(this.assistedRun);
       this.activeBoss = null;
       this.phaseBeforePause = "playing";
+      this.aimReticle = null;
       this.bossGates.clear();
       this.checkpointSpawns.clear();
       this.circleSpawns.clear();
@@ -379,6 +408,7 @@ export function createAscentScene(
         this.enemyVisuals.forEach((visual) => visual.destroy());
         this.bossVisuals.forEach((visual) => visual.destroy());
         this.vfx?.destroy();
+        this.aimReticle = null;
         this.playerVisual = null;
         this.enemyVisuals.clear();
         this.bossVisuals.clear();
@@ -396,6 +426,11 @@ export function createAscentScene(
         this.checkpointSpawns.get(0) ??
         new PhaserRuntime.Math.Vector2(GAME_WIDTH / 2, WORLD_HEIGHT - 80);
       this.createPlayer(initialSpawn.x, initialSpawn.y);
+      this.aimReticle = this.add
+        .circle(initialSpawn.x, initialSpawn.y - 52, 5, 0x39f4ff, 0)
+        .setStrokeStyle(2, 0x39f4ff, 0.9)
+        .setDepth(14)
+        .setVisible(false);
       this.lastStableSpawn = initialSpawn.clone();
       this.lastStablePlatform = null;
       this.lastStablePlatformOffset = null;
@@ -464,6 +499,7 @@ export function createAscentScene(
       this.enemyVisuals.forEach((visual) => visual.pause());
       this.bossVisuals.forEach((visual) => visual.pause());
       this.vfx?.pause();
+      this.aimReticle?.setVisible(false);
       this.emitSnapshot(true);
     }
 
@@ -589,6 +625,7 @@ export function createAscentScene(
         phase: this.phase,
         breath: this.breath,
         circleId: CIRCLE_LEVELS[this.currentCircleIndex]?.id ?? "IX",
+        aim: bridge.input.aim,
         player: {
           x: this.player.x,
           y: this.player.y,
@@ -608,6 +645,7 @@ export function createAscentScene(
               ? projectileBody.velocity.y
               : null,
         },
+        lastShot: this.lastShotTelemetry,
       } as const;
     }
 
@@ -1322,7 +1360,15 @@ export function createAscentScene(
           ),
         );
       }
-      if (bridge.input.moveX !== 0) this.player.setFlipX(bridge.input.moveX < 0);
+      const aimFacing = resolveAimFacingDirection(
+        bridge.input.aim,
+        body.velocity.x,
+        this.player.flipX,
+      );
+      if (bridge.input.aim || bridge.input.moveX !== 0) {
+        this.player.setFlipX(aimFacing < 0);
+      }
+      this.updateAimReticle(bridge.input.aim);
 
       const grounded = body.blocked.down || body.touching.down;
       if (grounded && !this.wasGrounded && body.velocity.y >= 0) {
@@ -1394,6 +1440,25 @@ export function createAscentScene(
       }
     }
 
+    private updateAimReticle(
+      aim: Readonly<{ x: number; y: number }> | null | undefined,
+    ) {
+      if (!this.aimReticle) return;
+      const magnitude = aim ? Math.hypot(aim.x, aim.y) : 0;
+      if (!aim || !Number.isFinite(magnitude) || magnitude < 0.01) {
+        this.aimReticle.setVisible(false);
+        return;
+      }
+      const unitX = aim.x / magnitude;
+      const unitY = aim.y / magnitude;
+      this.aimReticle
+        .setPosition(
+          this.player.x + unitX * 38,
+          this.player.y - 31 + unitY * 38,
+        )
+        .setVisible(true);
+    }
+
     private updatePlayerAnimation(time: number, grounded: boolean) {
       if (!this.authoredPlayer || !this.playerVisual) return;
       const body = this.player.body as Phaser.Physics.Arcade.Body;
@@ -1403,7 +1468,7 @@ export function createAscentScene(
       else if (time < this.hitUntil) state = "hit";
       else if (time < this.landedUntil) state = "land";
       else if (firing) {
-        state = this.lastShotWasDiagonal
+        state = this.lastShotWasDirectional
           ? "fire-diagonal"
           : grounded
             ? "fire-up-ground"
@@ -1437,12 +1502,25 @@ export function createAscentScene(
         moveX: bridge.input.moveX,
         facingDirection,
         projectileSpeed: combat.projectileSpeed,
+        aim: bridge.input.aim,
       });
-      const { diagonal, direction, angleDegrees: baseAngle } = trajectory;
-      this.lastShotWasDiagonal = diagonal;
+      const { direction, angleDegrees: baseAngle } = trajectory;
+      this.lastShotWasDirectional = isDirectionalVerseAngle(baseAngle);
       const angles = time < this.rimaUntil ? [baseAngle - 10, baseAngle, baseAngle + 10] : [baseAngle];
-      const socketX = this.player.x + (diagonal ? 20 : 10) * direction;
-      const socketY = this.player.y - (grounded ? 48 : 46);
+      const baseRadians = PhaserRuntime.Math.DegToRad(baseAngle);
+      const socketRadius = 19;
+      const torsoY = this.player.y - (grounded ? 33 : 31);
+      const socketX = this.player.x + Math.cos(baseRadians) * socketRadius;
+      const socketY = torsoY + Math.sin(baseRadians) * socketRadius;
+      this.lastShotSequence += 1;
+      this.lastShotTelemetry = {
+        sequence: this.lastShotSequence,
+        originX: socketX,
+        originY: socketY,
+        velocityX: trajectory.velocityX,
+        velocityY: trajectory.velocityY,
+        angleDegrees: baseAngle,
+      };
       this.vfx?.playWorld("verse-muzzle", socketX, socketY, {
         rotation: PhaserRuntime.Math.DegToRad(baseAngle),
         flipX: direction < 0,

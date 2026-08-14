@@ -6,14 +6,17 @@ import gsap from "gsap";
 import Link from "next/link";
 
 import type {
+  AimVector,
   GameController,
   GameEvent,
   GameSnapshot,
 } from "@/lib/rise-game";
 import { GameAudioEngine } from "@/lib/game-audio";
 
+import { AimJoystick } from "./aim-joystick";
 import styles from "./rise-game.module.css";
 import { useGameFullscreen } from "./use-game-fullscreen";
+import { useGamepadControls } from "./use-gamepad-controls";
 
 gsap.registerPlugin(useGSAP);
 
@@ -38,6 +41,10 @@ const CIRCLES: Record<string, { label: string; act: string }> = {
 };
 
 type InputLane = "left" | "right" | "jump" | "fire";
+type AimInputState = Readonly<{
+  aim: AimVector | null;
+  fireHeld: boolean;
+}>;
 type RuntimeState = "loading" | "ready" | "error";
 type Feedback = { id: number; label: string; tone: "cyan" | "magenta" | "acid" };
 
@@ -131,6 +138,7 @@ export function RiseGame() {
       fire: new Set(),
     },
   );
+  const activeAimInputsRef = useRef<Map<string, AimInputState>>(new Map());
   const feedbackIdRef = useRef(0);
 
   const [runtimeState, setRuntimeState] = useState<RuntimeState>("loading");
@@ -140,7 +148,7 @@ export function RiseGame() {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [audioAvailable, setAudioAvailable] = useState(true);
   const [announcement, setAnnouncement] = useState(
-    "Cantica Zero pronta. Muoviti a sinistra e destra, salta sulle pedane e spezza il Rumore con i Versi.",
+    "Cantica Zero pronta. Corri, salta e spezza il Rumore. Su touch e joypad puoi mirare i Versi a 360 gradi.",
   );
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
@@ -151,6 +159,7 @@ export function RiseGame() {
 
   const releaseAllInputs = useCallback(() => {
     for (const lane of Object.values(activeInputsRef.current)) lane.clear();
+    activeAimInputsRef.current.clear();
     controllerRef.current?.clearInput();
   }, []);
 
@@ -158,17 +167,30 @@ export function RiseGame() {
     const active = activeInputsRef.current;
     const left = active.left.size > 0;
     const right = active.right.size > 0;
+    const touchAim = activeAimInputsRef.current.get("touch:aim")?.aim ?? null;
+    const gamepadAim = activeAimInputsRef.current.get("gamepad:aim")?.aim ?? null;
+    const fireHeld =
+      active.fire.size > 0 ||
+      Array.from(activeAimInputsRef.current.values()).some((input) => input.fireHeld);
     controllerRef.current?.setInput({
       moveX: left === right ? 0 : left ? -1 : 1,
+      aim: touchAim ?? gamepadAim,
       jumpHeld: active.jump.size > 0,
-      fireHeld: active.fire.size > 0,
+      fireHeld,
     });
   }, []);
+
+  const isFireHeld = useCallback(
+    () =>
+      activeInputsRef.current.fire.size > 0 ||
+      Array.from(activeAimInputsRef.current.values()).some((input) => input.fireHeld),
+    [],
+  );
 
   const pressInput = useCallback(
     (lane: InputLane, source: string) => {
       const sources = activeInputsRef.current[lane];
-      const wasReleased = sources.size === 0;
+      const wasReleased = lane === "fire" ? !isFireHeld() : sources.size === 0;
       sources.add(source);
       updateHeldInput();
       if (wasReleased && lane === "jump") {
@@ -177,7 +199,7 @@ export function RiseGame() {
         controllerRef.current?.setInput({ firePressed: true, fireHeld: true });
       }
     },
-    [updateHeldInput],
+    [isFireHeld, updateHeldInput],
   );
 
   const releaseInput = useCallback(
@@ -186,6 +208,22 @@ export function RiseGame() {
       updateHeldInput();
     },
     [updateHeldInput],
+  );
+
+  const setAimInput = useCallback(
+    (source: "touch:aim" | "gamepad:aim", aim: AimVector | null, fireHeld: boolean) => {
+      const wasFireHeld = isFireHeld();
+      if (aim === null && !fireHeld) {
+        activeAimInputsRef.current.delete(source);
+      } else {
+        activeAimInputsRef.current.set(source, { aim, fireHeld });
+      }
+      updateHeldInput();
+      if (!wasFireHeld && isFireHeld()) {
+        controllerRef.current?.setInput({ firePressed: true, fireHeld: true });
+      }
+    },
+    [isFireHeld, updateHeldInput],
   );
 
   const pauseGame = useCallback(
@@ -223,6 +261,55 @@ export function RiseGame() {
     setAnnouncement("La risalita continua.");
     window.requestAnimationFrame(() => stageRef.current?.focus({ preventScroll: true }));
   }, []);
+
+  const setGamepadMove = useCallback(
+    (moveX: -1 | 0 | 1) => {
+      const active = activeInputsRef.current;
+      active.left.delete("gamepad:move:left");
+      active.right.delete("gamepad:move:right");
+      if (moveX < 0) active.left.add("gamepad:move:left");
+      if (moveX > 0) active.right.add("gamepad:move:right");
+      updateHeldInput();
+    },
+    [updateHeldInput],
+  );
+
+  const setGamepadJump = useCallback(
+    (held: boolean) => {
+      if (held) pressInput("jump", "gamepad:jump");
+      else releaseInput("jump", "gamepad:jump");
+    },
+    [pressInput, releaseInput],
+  );
+
+  const setGamepadAim = useCallback(
+    (aim: AimVector | null, fireHeld: boolean) => {
+      setAimInput("gamepad:aim", aim, fireHeld);
+    },
+    [setAimInput],
+  );
+
+  const toggleGamepadPause = useCallback(() => {
+    if (snapshotRef.current?.phase === "paused") resumeGame();
+    else pauseGame("joypad");
+  }, [pauseGame, resumeGame]);
+
+  const handleGamepadConnection = useCallback((connected: boolean) => {
+    setAnnouncement(
+      connected
+        ? "Joypad connesso. Stick sinistro per muoverti, A per saltare, stick destro e R2 o RB per i Versi."
+        : "Joypad disconnesso. Tastiera e controlli touch restano attivi.",
+    );
+  }, []);
+
+  useGamepadControls({
+    enabled: phase === "playing",
+    onMoveChange: setGamepadMove,
+    onJumpChange: setGamepadJump,
+    onAimChange: setGamepadAim,
+    onPauseToggle: toggleGamepadPause,
+    onConnectionChange: handleGamepadConnection,
+  });
 
   const handleGameEvent = useCallback((event: GameEvent) => {
     if (event.type === "audio") {
@@ -491,6 +578,13 @@ export function RiseGame() {
     }
   };
 
+  const setTouchAim = useCallback(
+    (aim: AimVector | null, fireHeld: boolean) => {
+      setAimInput("touch:aim", aim, fireHeld);
+    },
+    [setAimInput],
+  );
+
   const bindPointer = (lane: InputLane) => ({
     onPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
       event.preventDefault();
@@ -650,7 +744,7 @@ export function RiseGame() {
           {feedback?.label}
         </div>
 
-        <div className={styles.touchControls} aria-label="Comandi touch">
+        <div className={styles.touchControls} role="group" aria-label="Comandi touch">
           <div className={styles.movePad}>
             <button type="button" aria-label="Sinistra" {...bindPointer("left")}>
               <span aria-hidden="true">←</span>
@@ -660,8 +754,19 @@ export function RiseGame() {
             </button>
           </div>
           <div className={styles.actionPad}>
-            <button type="button" aria-label="Salta" {...bindPointer("jump")}>SALTA</button>
-            <button type="button" aria-label="Verso" {...bindPointer("fire")}>VERSO</button>
+            <button
+              className={styles.jumpButton}
+              type="button"
+              aria-label="Salta"
+              {...bindPointer("jump")}
+            >
+              SALTA
+            </button>
+            <AimJoystick
+              className={styles.aimJoystick}
+              disabled={phase !== "playing"}
+              onAimChange={setTouchAim}
+            />
           </div>
         </div>
 
@@ -696,7 +801,7 @@ export function RiseGame() {
               <p className={styles.kicker}>CANTICA ZERO / IX → I</p>
               <h3>Dal fondo alle stelle.</h3>
               <p className={styles.overlayCopy}>
-                Corri, salta e spezza il Rumore. Tre vite, tre Atti, nove cerchi. Nessun tempo limite.
+                Corri, salta e mira i Versi a 360°. Tre vite, tre Atti, nove cerchi. Nessun tempo limite.
               </p>
               <button className={styles.primaryButton} type="button" onClick={startGame}>
                 Inizia la Cantica
@@ -771,7 +876,7 @@ export function RiseGame() {
       <dl className={styles.instructions} id="cantica-controls">
         <div><dt>Muovi</dt><dd>A/D · ← →</dd></div>
         <div><dt>Salta</dt><dd>W · ↑ · Spazio</dd></div>
-        <div><dt>Verso</dt><dd>J · X</dd></div>
+        <div><dt>Verso</dt><dd>J/X · Stick R + R2/RB</dd></div>
         <div>
           <dt>Pausa</dt>
           <dd>{isFullscreen ? "P pausa · Esc esce e mette in pausa" : "P · Esc"}</dd>

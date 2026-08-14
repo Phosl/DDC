@@ -120,8 +120,9 @@ export default function GamePage() {
                 <span>02</span>
                 <p>
                   <strong>Lancia Versi</strong>
-                  Usa J o X. Da fermo e in aria miri in alto; correndo, il
-                  Verso sale in diagonale.
+                  Su touch trascina lo stick destro per mirare e sparare a 360°.
+                  Con un joypad usa la levetta destra e R2 o RB. J e X restano
+                  disponibili sulla tastiera.
                 </p>
               </li>
               <li>
