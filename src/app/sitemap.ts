@@ -14,7 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       images: [
         absoluteUrl("/media/hero-editorial.jpeg"),
         absoluteUrl("/media/portrait-neon.jpeg"),
-        absoluteUrl("/media/studio.jpeg"),
+        absoluteUrl("/media/studio-professional.webp"),
         absoluteUrl("/media/portrait-bw.jpeg"),
         absoluteUrl("/media/portrait-full.jpeg"),
         absoluteUrl("/media/releases/chimica.webp"),

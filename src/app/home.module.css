@@ -310,7 +310,7 @@
 }
 
 .chapter_mono .chapterImage {
-  filter: grayscale(1) contrast(1.05);
+  filter: contrast(1.05) saturate(1.04);
 }
 
 .chapter_magenta .chapterImage {

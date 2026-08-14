@@ -36,8 +36,8 @@ export const journeyChapters: JourneyChapter[] = [
     kicker: "Radici",
     title: "Da dove vieni continua a parlare.",
     body: "Una stanza, pochi strumenti e tutto quello che serve per trasformare il rumore in voce.",
-    image: "/media/studio.jpeg",
-    alt: "Home studio di Davide Del Carmen con tastiera MIDI e monitor audio",
+    image: "/media/studio-professional.webp",
+    alt: "Home studio professionale di Davide Del Carmen con tastiera MIDI, monitor audio e foto incorniciata di 2Pac",
     tone: "mono",
   },
   {
