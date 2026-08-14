@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { GameKeyArt } from "@/components/game-key-art";
 import { HomeMotion } from "@/components/home-motion";
 import { LatestReleases } from "@/components/latest-releases";
 import { SiteHeader } from "@/components/site-header";
@@ -256,34 +257,23 @@ export default function HomePage() {
 
       <section className={styles.gameTeaser} aria-labelledby="game-title">
         <div className={styles.gameScene} aria-hidden="true">
-          <Image
-            src={siteConfig.gamePoster}
-            alt=""
-            fill
-            sizes="(max-width: 900px) 100vw, 54vw"
-            className={styles.gamePosterImage}
-          />
+          <GameKeyArt className={styles.gamePosterImage} />
           <div className={styles.gamePosterWash} />
           <div className={styles.gamePosterMeta}>
             <span>DDC presenta</span>
             <span>Arcade verticale / 199X</span>
           </div>
-          <div className={styles.gamePosterTitle}>
-            <span>Cantica</span>
-            <strong>Zero</strong>
-          </div>
-          <div className={styles.gamePosterBadge}>IX → I / Insert voice</div>
         </div>
         <div className={styles.gameCopy}>
           <p className={styles.sectionLabel} data-reveal>
             03 / Esperienza interattiva
           </p>
           <h2 id="game-title" data-reveal>
-            Dall’inferno
-            <br />in su.
+            Cantica
+            <br />Zero.
           </h2>
           <div className={styles.gameMeta} data-reveal>
-            <p>Nove cerchi. Tre atti. Una direzione: su.</p>
+            <p>Dall’inferno in su. Nove cerchi, una direzione.</p>
             <Link href="/gioco" className={styles.gameAction}>
               Gioca ora <span aria-hidden="true">↗</span>
             </Link>

@@ -20,6 +20,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
         absoluteUrl("/media/releases/chimica.webp"),
         absoluteUrl("/media/releases/gia-da-un-po.webp"),
         absoluteUrl("/media/releases/a3-la-morte-puo-attendere-pt-2.webp"),
+        absoluteUrl(siteConfig.gameBanner),
+        absoluteUrl(siteConfig.gamePoster),
       ],
     },
     {
@@ -27,7 +29,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: LAST_UPDATED,
       changeFrequency: "monthly",
       priority: 0.8,
-      images: [absoluteUrl(siteConfig.gamePoster)],
+      images: [
+        absoluteUrl(siteConfig.gameBanner),
+        absoluteUrl(siteConfig.gamePoster),
+      ],
     },
   ];
 }

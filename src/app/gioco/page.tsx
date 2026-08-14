@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
+import { GameKeyArt } from "@/components/game-key-art";
 import { RiseGame } from "@/components/rise-game";
 import { SiteHeader } from "@/components/site-header";
 import { StructuredData } from "@/components/structured-data";
@@ -70,27 +70,16 @@ export default function GamePage() {
 
       <main>
         <section className={styles.hero} aria-labelledby="game-page-title">
-          <div className={styles.heroPoster} aria-hidden="true">
-            <Image
-              src={siteConfig.gamePoster}
-              alt=""
-              fill
-              preload
-              sizes="(max-width: 860px) 92vw, 42vw"
-              className={styles.heroPosterImage}
+          <div className={styles.heroArtwork} aria-hidden="true">
+            <GameKeyArt
+              className={styles.heroArtworkImage}
+              fetchPriority="high"
             />
-            <div className={styles.heroPosterWash} />
-            <div className={styles.heroPosterMeta}>
-              <span>DDC presenta</span>
-              <span>Una produzione 199X</span>
-            </div>
-            <p className={styles.heroPosterTitle}>
-              <span>Cantica</span>
-              <strong>Zero</strong>
-            </p>
-            <span className={styles.heroPosterBadge}>
-              Arcade verticale · IX → I
-            </span>
+            <div className={styles.heroArtworkWash} />
+          </div>
+          <div className={styles.heroEdition} aria-hidden="true">
+            <span>DDC presenta</span>
+            <span>Arcade verticale · IX → I</span>
           </div>
           <div className={styles.heroContent}>
             <p className={styles.eyebrow}>DDC / CANTICA ZERO / SALA 001</p>
