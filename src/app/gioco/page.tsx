@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import { RiseGame } from "@/components/rise-game";
@@ -43,7 +44,7 @@ const gameStructuredData = {
   alternateName: "Il gioco della risalita di DDC",
   description: siteConfig.gameDescription,
   url: absoluteUrl("/gioco"),
-  image: absoluteUrl("/gioco/opengraph-image"),
+  image: absoluteUrl(siteConfig.gamePoster),
   inLanguage: siteConfig.language,
   genre: ["Platform", "Action", "Arcade", "Pixel art"],
   gamePlatform: "Web browser",
@@ -65,29 +66,42 @@ export default function GamePage() {
   return (
     <div className={styles.page}>
       <StructuredData data={gameStructuredData} id="game-structured-data" />
-      <SiteHeader variant="light" />
+      <SiteHeader />
 
       <main>
         <section className={styles.hero} aria-labelledby="game-page-title">
-          <div className={styles.heroPortal} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <b>00</b>
-          </div>
-          <div className={styles.heroGrid} aria-hidden="true">
-            <span />
-            <span />
-            <span />
+          <div className={styles.heroPoster} aria-hidden="true">
+            <Image
+              src={siteConfig.gamePoster}
+              alt=""
+              fill
+              preload
+              sizes="(max-width: 860px) 92vw, 42vw"
+              className={styles.heroPosterImage}
+            />
+            <div className={styles.heroPosterWash} />
+            <div className={styles.heroPosterMeta}>
+              <span>DDC presenta</span>
+              <span>Una produzione 199X</span>
+            </div>
+            <p className={styles.heroPosterTitle}>
+              <span>Cantica</span>
+              <strong>Zero</strong>
+            </p>
+            <span className={styles.heroPosterBadge}>
+              Arcade verticale · IX → I
+            </span>
           </div>
           <div className={styles.heroContent}>
-            <p className={styles.eyebrow}>DDC / CANTICA ZERO / ARCADE 001</p>
+            <p className={styles.eyebrow}>DDC / CANTICA ZERO / SALA 001</p>
             <h1 id="game-page-title">
-              Dall’inferno <em>in su.</em>
+              <span>Cantica</span>
+              <em>Zero</em>
+              <small>Dall’inferno in su.</small>
             </h1>
             <div className={styles.heroFooter}>
               <p>Nove cerchi. Tre atti. Una direzione: su.</p>
-              <a href="#partita">Inizia dal fondo ↓</a>
+              <a href="#partita">Gioca ora ↓</a>
             </div>
           </div>
         </section>

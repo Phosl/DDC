@@ -256,13 +256,23 @@ export default function HomePage() {
 
       <section className={styles.gameTeaser} aria-labelledby="game-title">
         <div className={styles.gameScene} aria-hidden="true">
-          <div className={styles.gameSun} />
-          <div className={styles.gameHouse}>
-            <span />
-            <span />
-            <span />
+          <Image
+            src={siteConfig.gamePoster}
+            alt=""
+            fill
+            sizes="(max-width: 900px) 100vw, 54vw"
+            className={styles.gamePosterImage}
+          />
+          <div className={styles.gamePosterWash} />
+          <div className={styles.gamePosterMeta}>
+            <span>DDC presenta</span>
+            <span>Arcade verticale / 199X</span>
           </div>
-          <div className={styles.gameRoad} />
+          <div className={styles.gamePosterTitle}>
+            <span>Cantica</span>
+            <strong>Zero</strong>
+          </div>
+          <div className={styles.gamePosterBadge}>IX → I / Insert voice</div>
         </div>
         <div className={styles.gameCopy}>
           <p className={styles.sectionLabel} data-reveal>

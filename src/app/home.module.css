@@ -506,82 +506,111 @@
 .gameScene {
   position: relative;
   min-height: 100svh;
+  isolation: isolate;
   overflow: hidden;
   border-right: 1px solid rgba(8, 8, 8, 0.35);
-  background: linear-gradient(#78e3dc 0 63%, #876f64 63% 100%);
+  background: var(--ink);
 }
 
-.gameSun {
+.gameScene::after {
   position: absolute;
-  top: 13%;
-  left: 13%;
-  width: clamp(6rem, 15vw, 13rem);
-  aspect-ratio: 1;
-  border: 1px solid var(--ink);
-  border-radius: 50%;
-  background: var(--acid);
-  box-shadow: 0 0 0 1.2rem rgba(215, 255, 70, 0.14);
-}
-
-.gameHouse {
-  position: absolute;
-  bottom: 25%;
-  left: 50%;
-  width: min(58%, 28rem);
-  aspect-ratio: 1.5;
-  border: 3px solid var(--ink);
-  background: var(--magenta);
-  transform: translateX(-50%);
-  box-shadow: 1.2rem 1.2rem 0 rgba(8, 8, 8, 0.82);
-}
-
-.gameHouse::before {
-  position: absolute;
-  top: -36%;
-  left: -9%;
-  width: 118%;
-  height: 45%;
-  border: 3px solid var(--ink);
-  background: #f05688;
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  z-index: 3;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(244, 240, 232, 0.045) 0,
+    rgba(244, 240, 232, 0.045) 1px,
+    transparent 1px,
+    transparent 5px
+  );
   content: "";
+  mix-blend-mode: screen;
+  pointer-events: none;
 }
 
-.gameHouse span {
+.gamePosterImage {
   position: absolute;
-  bottom: 0;
-  width: 16%;
-  height: 48%;
-  border: 3px solid var(--ink);
-  background: var(--cyan);
+  z-index: 0;
+  object-fit: cover;
+  object-position: 50% 50%;
+  filter: contrast(1.08) saturate(1.06);
 }
 
-.gameHouse span:first-child {
-  left: 12%;
-}
-
-.gameHouse span:nth-child(2) {
-  left: 42%;
-  height: 62%;
-  background: #7b6259;
-}
-
-.gameHouse span:last-child {
-  right: 12%;
-}
-
-.gameRoad {
+.gamePosterWash {
   position: absolute;
-  right: -10%;
-  bottom: -18%;
-  left: -10%;
-  height: 42%;
-  border-top: 3px solid var(--ink);
+  z-index: 1;
+  inset: 0;
   background:
-    linear-gradient(102deg, transparent 45%, var(--ink) 46% 47%, transparent 48%) 12% 20% / 22% 60% no-repeat,
-    linear-gradient(70deg, transparent 47%, var(--ink) 48% 49%, transparent 50%) 75% 10% / 26% 70% no-repeat,
-    #77645d;
-  transform: perspective(20rem) rotateX(14deg);
+    linear-gradient(180deg, rgba(8, 8, 8, 0.78) 0%, transparent 25%),
+    linear-gradient(0deg, rgba(8, 8, 8, 0.58) 0%, transparent 28%),
+    linear-gradient(90deg, rgba(8, 8, 8, 0.26), transparent 42%);
+  pointer-events: none;
+}
+
+.gamePosterMeta {
+  position: absolute;
+  z-index: 2;
+  top: clamp(1.25rem, 3vw, 2.4rem);
+  right: clamp(1.1rem, 3vw, 2.4rem);
+  left: clamp(1.1rem, 3vw, 2.4rem);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid rgba(244, 240, 232, 0.62);
+  color: #f4f0e8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(0.55rem, 0.8vw, 0.72rem);
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.gamePosterTitle {
+  position: absolute;
+  z-index: 2;
+  top: clamp(4.6rem, 10vw, 8rem);
+  left: clamp(1.1rem, 3vw, 2.4rem);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--display);
+  font-size: clamp(3.6rem, 8.8vw, 8.8rem);
+  font-weight: 950;
+  letter-spacing: -0.085em;
+  line-height: 0.68;
+  text-transform: uppercase;
+  transform: rotate(-1.2deg);
+}
+
+.gamePosterTitle span {
+  color: #f4f0e8;
+  text-shadow: 0.055em 0.055em 0 rgba(8, 8, 8, 0.86);
+}
+
+.gamePosterTitle strong {
+  color: var(--magenta);
+  font-weight: inherit;
+  text-shadow:
+    0.055em 0.055em 0 var(--cyan),
+    0.1em 0.1em 0 rgba(8, 8, 8, 0.84);
+}
+
+.gamePosterBadge {
+  position: absolute;
+  z-index: 4;
+  right: clamp(1rem, 3vw, 2.2rem);
+  bottom: clamp(1rem, 3vw, 2.2rem);
+  padding: 0.7rem 0.85rem;
+  border: 2px solid var(--ink);
+  background: var(--acid);
+  box-shadow: 0.45rem 0.45rem 0 var(--magenta);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(0.55rem, 0.8vw, 0.72rem);
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  transform: rotate(1.6deg);
 }
 
 .gameCopy {
