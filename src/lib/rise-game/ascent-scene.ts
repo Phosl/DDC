@@ -27,6 +27,24 @@ import type {
   GamePhase,
   GameSnapshot,
 } from "./types";
+import {
+  createBossVisualController,
+  createEnemyVisualController,
+  createPlayerVisualController,
+  queueActorAtlases,
+  registerActorAnimations,
+  type ActorVisualController,
+  type EnemyVisualController,
+} from "./visuals/actor-visuals";
+import type {
+  BossVisualState,
+  PlayerVisualState,
+} from "./visuals/visual-manifest";
+import {
+  createCanticaVfxSystem,
+  preloadCanticaVfxAtlas,
+  type CanticaVfxSystem,
+} from "./visuals/vfx-system";
 
 type PhaserNamespace = typeof Phaser;
 type BodyGameObject = Phaser.GameObjects.Rectangle | Phaser.Physics.Arcade.Sprite;
@@ -52,11 +70,9 @@ const BOSS_NAMES: Record<BossId, string> = {
   charon: "Caronte",
 };
 
-const BOSS_TEXTURES: Record<BossId, string> = {
-  minotaur: "boss-minotaur",
-  pluto: "boss-pluto",
-  charon: "boss-charon",
-};
+const PLAYER_TEXTURE = "cantica-player-v3";
+const ENEMY_TEXTURE = "cantica-enemy-v3";
+const BOSS_TEXTURE = "cantica-boss-v3";
 
 const ACT_PALETTES = [
   { sky: 0x08131c, platform: 0x9ad9e5, accent: 0x39f4ff, shadow: 0x204050 },
@@ -73,25 +89,58 @@ const ENEMY_KINDS: readonly EnemyKind[] = [
 ];
 
 const ASSET_PATHS = {
-  player: "/game/v2/sprites/davide-atlas-v2.png",
-  enemies: "/game/v2/enemies/enemies-atlas.png",
   platforms: "/game/v2/tiles/platforms.png",
-  minotaur: "/game/v2/enemies/minotauro.png",
-  pluto: "/game/v2/enemies/pluto.png",
-  charon: "/game/v2/enemies/caronte.png",
 } as const;
 
+const SENTRY_ATTACK_WINDUP_MS = 250;
+
+type TimedAttackState = Readonly<{
+  actorActive: boolean;
+  defeated: boolean;
+  hp: number;
+  bodyEnabled: boolean;
+  phase: GamePhase;
+}>;
+
+export function canReleaseTimedAttack({
+  actorActive,
+  defeated,
+  hp,
+  bodyEnabled,
+  phase,
+}: TimedAttackState): boolean {
+  return actorActive && !defeated && hp > 0 && bodyEnabled && phase === "playing";
+}
+
+export function resolveFacingDirection(velocityX: number, flipX: boolean): -1 | 1 {
+  if (Math.abs(velocityX) > 1) return velocityX < 0 ? -1 : 1;
+  return flipX ? -1 : 1;
+}
+
+export function resolveVerseHitbox(angleDegrees: number, usesAtlas: boolean) {
+  if (!usesAtlas) return { width: 7, height: 14 };
+  const radians = (angleDegrees * Math.PI) / 180;
+  const cosine = Math.abs(Math.cos(radians));
+  const sine = Math.abs(Math.sin(radians));
+  return {
+    width: 16 * cosine + 8 * sine,
+    height: 16 * sine + 8 * cosine,
+  };
+}
+
 function isBodyObject(value: unknown): value is BodyObject {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      "body" in value &&
-      "getData" in value,
-  );
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { body?: unknown; getData?: unknown };
+  return Boolean(candidate.body && typeof candidate.getData === "function");
 }
 
 function isDynamicBodyObject(value: unknown): value is DynamicBodyObject {
-  return isBodyObject(value) && "velocity" in value.body;
+  return (
+    isBodyObject(value) &&
+    typeof value.body === "object" &&
+    value.body !== null &&
+    "velocity" in value.body
+  );
 }
 
 function clampActIndex(value: number): 0 | 1 | 2 {
@@ -152,6 +201,7 @@ export function createAscentScene(
     private jumpBufferedAt = -Infinity;
     private jumpCut = true;
     private wasGrounded = false;
+    private lastAirborneVelocityY = 0;
     private landedUntil = -Infinity;
     private hitUntil = -Infinity;
     private currentCircleIndex = 0;
@@ -162,6 +212,13 @@ export function createAscentScene(
     private phaseBeforePause: GamePhase = "playing";
     private player!: Phaser.Physics.Arcade.Sprite;
     private authoredPlayer = false;
+    private playerVisual: ActorVisualController<PlayerVisualState> | null = null;
+    private enemyVisuals = new Map<Phaser.Physics.Arcade.Sprite, EnemyVisualController>();
+    private bossVisuals = new Map<
+      Phaser.Physics.Arcade.Sprite,
+      ActorVisualController<BossVisualState>
+    >();
+    private vfx: CanticaVfxSystem | null = null;
     private staticPlatforms!: Phaser.GameObjects.Group;
     private oneWayPlatforms!: Phaser.GameObjects.Group;
     private movingPlatforms!: Phaser.GameObjects.Group;
@@ -202,6 +259,7 @@ export function createAscentScene(
       this.jumpBufferedAt = -Infinity;
       this.jumpCut = true;
       this.wasGrounded = false;
+      this.lastAirborneVelocityY = 0;
       this.landedUntil = -Infinity;
       this.hitUntil = -Infinity;
       this.currentCircleIndex = 0;
@@ -217,6 +275,10 @@ export function createAscentScene(
       this.backgroundLevelsDrawn.clear();
       this.lastMovingPlatform = null;
       this.assetLoadFailed = false;
+      this.playerVisual = null;
+      this.enemyVisuals.clear();
+      this.bossVisuals.clear();
+      this.vfx = null;
     }
 
     preload() {
@@ -224,21 +286,11 @@ export function createAscentScene(
         this.assetLoadFailed = true;
       });
 
-      this.load.spritesheet("davide-v2", ASSET_PATHS.player, {
-        frameWidth: 256,
-        frameHeight: 256,
-      });
-      this.load.spritesheet("rumore-v2", ASSET_PATHS.enemies, {
-        frameWidth: 418,
-        frameHeight: 418,
-      });
+      queueActorAtlases(this);
+      preloadCanticaVfxAtlas(this);
       this.load.spritesheet("platform-v2", ASSET_PATHS.platforms, {
         frameWidth: 221,
         frameHeight: 295,
-      });
-      this.load.spritesheet(BOSS_TEXTURES.minotaur, ASSET_PATHS.minotaur, {
-        frameWidth: 355,
-        frameHeight: 738,
       });
       (["far", "mid", "near"] as const).forEach((layer) => {
         this.load.image(
@@ -251,8 +303,21 @@ export function createAscentScene(
     create() {
       assertValidCircleLevels();
       this.createProceduralTextures();
-      this.createPlayerAnimations();
+      registerActorAnimations(this);
       this.createGroups();
+      this.vfx = createCanticaVfxSystem(this, {
+        reducedMotion: bridge.reducedMotion,
+      });
+      this.events.once(PhaserRuntime.Scenes.Events.SHUTDOWN, () => {
+        this.playerVisual?.destroy();
+        this.enemyVisuals.forEach((visual) => visual.destroy());
+        this.bossVisuals.forEach((visual) => visual.destroy());
+        this.vfx?.destroy();
+        this.playerVisual = null;
+        this.enemyVisuals.clear();
+        this.bossVisuals.clear();
+        this.vfx = null;
+      });
       this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
       this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
       this.cameras.main.setBackgroundColor(ACT_PALETTES[0].sky);
@@ -260,8 +325,6 @@ export function createAscentScene(
 
       CIRCLE_LEVELS.forEach((level, index) => this.buildLevel(level, index));
       this.loadedActs.add(0);
-      if (this.textures.exists(BOSS_TEXTURES.pluto)) this.loadedActs.add(1);
-      if (this.textures.exists(BOSS_TEXTURES.charon)) this.loadedActs.add(2);
 
       const initialSpawn =
         this.checkpointSpawns.get(0) ??
@@ -292,6 +355,9 @@ export function createAscentScene(
     update(_time: number, delta: number) {
       if (bridge.destroyed) return;
 
+      const safeDelta = Math.min(delta, 100);
+      this.vfx?.update(safeDelta);
+
       if (bridge.input.pausePressed) {
         bridge.input.pausePressed = false;
         if (this.phase === "playing" || this.phase === "dying") this.pauseGame("Pausa");
@@ -305,7 +371,6 @@ export function createAscentScene(
         return;
       }
 
-      const safeDelta = Math.min(delta, 100);
       this.elapsedMs += safeDelta;
       const gameTime = this.elapsedMs;
       this.updatePlayer(gameTime, safeDelta);
@@ -326,6 +391,10 @@ export function createAscentScene(
       bridge.desiredRunning = false;
       this.physics.pause();
       this.time.paused = true;
+      this.playerVisual?.pause();
+      this.enemyVisuals.forEach((visual) => visual.pause());
+      this.bossVisuals.forEach((visual) => visual.pause());
+      this.vfx?.pause();
       this.emitSnapshot(true);
     }
 
@@ -336,6 +405,10 @@ export function createAscentScene(
       this.statusText = CIRCLE_LEVELS[this.currentCircleIndex]?.title ?? "Sali";
       bridge.desiredRunning = true;
       this.physics.resume();
+      this.playerVisual?.resume();
+      this.enemyVisuals.forEach((visual) => visual.resume());
+      this.bossVisuals.forEach((visual) => visual.resume());
+      this.vfx?.resume();
       this.emitSnapshot(true);
     }
 
@@ -367,6 +440,7 @@ export function createAscentScene(
 
     setReducedMotion(enabled: boolean) {
       bridge.reducedMotion = enabled;
+      this.vfx?.setReducedMotion(enabled);
     }
 
     verifyCampaign() {
@@ -392,16 +466,28 @@ export function createAscentScene(
       return this.buildSnapshot();
     }
 
+    async verifyDamageRespawn() {
+      if (this.phase === "ready" || this.phase === "paused") this.resumeGame();
+      if (this.phase !== "playing") {
+        throw new Error(`Damage verification requires a playable scene, got ${this.phase}.`);
+      }
+      const livesBefore = this.lives;
+      this.invulnerableUntil = 0;
+      this.takeDamage("verifica runtime");
+      await new Promise<void>((resolve) => this.time.delayedCall(900, resolve));
+      const snapshot = this.buildSnapshot();
+      if (snapshot.phase !== "playing" || snapshot.lives !== livesBefore - 1) {
+        throw new Error(
+          `Damage verification failed: phase=${snapshot.phase}, lives=${snapshot.lives}, expected=${livesBefore - 1}.`,
+        );
+      }
+      return snapshot;
+    }
+
     private queueActAssets(actIndex: 1 | 2) {
       if (this.loadedActs.has(actIndex) || this.loadingActs.has(actIndex)) return;
       const bossId: BossId = actIndex === 1 ? "pluto" : "charon";
       const theme = actIndex === 1 ? "dite" : "stelle";
-      if (!this.textures.exists(BOSS_TEXTURES[bossId])) {
-        this.load.spritesheet(BOSS_TEXTURES[bossId], ASSET_PATHS[bossId], {
-          frameWidth: bossId === "pluto" ? 362 : 295,
-          frameHeight: bossId === "pluto" ? 724 : 887,
-        });
-      }
       (["far", "mid", "near"] as const).forEach((layer) => {
         const key = `background-${theme}-${layer}`;
         if (!this.textures.exists(key)) {
@@ -416,23 +502,20 @@ export function createAscentScene(
     private finishActAssetLoad(actIndex: 1 | 2, bossId: BossId) {
       this.loadingActs.delete(actIndex);
       this.loadedActs.add(actIndex);
-      this.createPlayerAnimations();
+      registerActorAnimations(this);
       CIRCLE_LEVELS.filter((level) => level.actIndex === actIndex).forEach((level) => {
         this.createLevelBackground(level, getLevelWorldOffsetY(level.orderFromBottom));
       });
       const boss = this.bosses.getChildren().find(
         (child) => isDynamicBodyObject(child) && child.getData("id") === bossId,
       );
-      if (!boss || !isDynamicBodyObject(boss) || !this.textures.exists(BOSS_TEXTURES[bossId])) return;
+      if (!boss || !isDynamicBodyObject(boss) || !this.textures.exists(BOSS_TEXTURE)) return;
       const sprite = boss as Phaser.Physics.Arcade.Sprite;
-      sprite.setTexture(BOSS_TEXTURES[bossId], 0).setDisplaySize(118, 88);
-      const bossBody = sprite.body as Phaser.Physics.Arcade.Body;
-      bossBody.setSize(
-        Math.round((sprite.frame.realWidth * 78) / sprite.displayWidth),
-        Math.round((sprite.frame.realHeight * 58) / sprite.displayHeight),
-        true,
-      );
-      if (this.anims.exists(`boss-${bossId}-move`)) sprite.anims.play(`boss-${bossId}-move`);
+      sprite.setTexture(BOSS_TEXTURE, 0).setDisplaySize(96, 96);
+      this.setWorldHitbox(sprite, 63, 63);
+      const current = this.bossVisuals.get(sprite);
+      current?.destroy();
+      this.bossVisuals.set(sprite, createBossVisualController(this, sprite, bossId));
     }
 
     private createGroups() {
@@ -515,46 +598,6 @@ export function createAscentScene(
         graphics.fillStyle(0xff664f).fillRect(18, 0, 60, 31);
         graphics.fillStyle(0xffd166).fillRect(24, 12, 12, 8);
         graphics.fillRect(60, 12, 12, 8);
-      });
-    }
-
-    private createPlayerAnimations() {
-      if (!this.textures.exists("davide-v2")) return;
-      const definitions = [
-        ["davide-idle", 0, 1, 4, -1],
-        ["davide-run", 2, 5, 12, -1],
-        ["davide-jump", 6, 9, 12, 0],
-        ["davide-fall", 10, 10, 8, 0],
-        ["davide-land", 11, 11, 18, 0],
-        ["davide-fire-up-ground", 12, 13, 15, 0],
-        ["davide-fire-up-air", 14, 15, 15, 0],
-        ["davide-fire-diagonal", 16, 17, 15, 0],
-        ["davide-hit", 18, 19, 16, 0],
-        ["davide-defeat", 20, 21, 9, 0],
-        ["davide-respawn", 22, 23, 10, 0],
-      ] as const;
-
-      definitions.forEach(([key, start, end, frameRate, repeat]) => {
-        if (this.anims.exists(key)) return;
-        this.anims.create({
-          key,
-          frames: this.anims.generateFrameNumbers("davide-v2", { start, end }),
-          frameRate,
-          repeat,
-        });
-      });
-
-      (["minotaur", "pluto", "charon"] as const).forEach((id) => {
-        const texture = BOSS_TEXTURES[id];
-        if (!this.textures.exists(texture) || this.anims.exists(`boss-${id}-move`)) {
-          return;
-        }
-        this.anims.create({
-          key: `boss-${id}-move`,
-          frames: this.anims.generateFrameNumbers(texture, { start: 0, end: 5 }),
-          frameRate: bridge.reducedMotion ? 3 : 7,
-          repeat: -1,
-        });
       });
     }
 
@@ -778,12 +821,15 @@ export function createAscentScene(
     }
 
     private createEnemy(x: number, y: number, kind: EnemyKind, actIndex: 0 | 1 | 2) {
-      const authored = this.textures.exists("rumore-v2");
-      const texture = authored ? "rumore-v2" : kind === "flyer" ? "flyer" : "enemy";
-      const kindOrder: readonly EnemyKind[] = ["walker", "charger", "sentry", "roller", "mimic", "flyer"];
-      const kindIndex = Math.max(0, kindOrder.indexOf(kind));
-      const enemy = this.physics.add.sprite(x, y, texture, authored ? actIndex * 3 + (kindIndex % 3) : 0);
-      if (authored) enemy.setDisplaySize(kind === "flyer" ? 43 : 38, kind === "flyer" ? 39 : 42);
+      const authored = this.textures.exists(ENEMY_TEXTURE);
+      const texture = authored ? ENEMY_TEXTURE : kind === "flyer" ? "flyer" : "enemy";
+      const enemy = this.physics.add.sprite(x, y, texture, 0);
+      if (authored) {
+        const visual = createEnemyVisualController(this, enemy, kind);
+        visual.play(kind === "sentry" ? "idle" : "move");
+        this.enemyVisuals.set(enemy, visual);
+        enemy.once("destroy", () => this.enemyVisuals.delete(enemy));
+      }
       enemy.setDepth(5).setData({
         kind,
         hp: kind === "roller" || kind === "charger" ? 3 : kind === "sentry" ? 2 : 1,
@@ -826,10 +872,14 @@ export function createAscentScene(
       actIndex: 0 | 1 | 2,
       levelOffsetY: number,
     ) {
-      const texture = this.textures.exists(BOSS_TEXTURES[id]) ? BOSS_TEXTURES[id] : "boss-fallback";
+      const texture = this.textures.exists(BOSS_TEXTURE) ? BOSS_TEXTURE : "boss-fallback";
       const boss = this.physics.add.sprite(x, y, texture, 0);
       const authored = texture !== "boss-fallback";
-      if (authored) boss.setDisplaySize(118, 88);
+      if (authored) {
+        const visual = createBossVisualController(this, boss, id);
+        this.bossVisuals.set(boss, visual);
+        boss.once("destroy", () => this.bossVisuals.delete(boss));
+      }
       boss.setDepth(8).setData({
         id,
         hp: 18,
@@ -842,8 +892,8 @@ export function createAscentScene(
       });
       const body = boss.body as Phaser.Physics.Arcade.Body;
       body.setAllowGravity(false).setImmovable(true);
-      body.setSize(authored ? Math.floor(boss.frame.realWidth * 0.55) : 78, authored ? Math.floor(boss.frame.realHeight * 0.62) : 58);
-      if (authored && this.anims.exists(`boss-${id}-move`)) boss.anims.play(`boss-${id}-move`);
+      if (authored) this.setWorldHitbox(boss, 63, 63);
+      else body.setSize(78, 58, true);
       this.bosses.add(boss);
 
       const palette = ACT_PALETTES[actIndex];
@@ -855,23 +905,20 @@ export function createAscentScene(
     }
 
     private createPlayer(x: number, y: number) {
-      this.authoredPlayer = this.textures.exists("davide-v2");
-      this.player = this.physics.add.sprite(x, y, this.authoredPlayer ? "davide-v2" : "player-fallback", 0);
+      this.authoredPlayer = this.textures.exists(PLAYER_TEXTURE);
+      this.player = this.physics.add.sprite(x, y, this.authoredPlayer ? PLAYER_TEXTURE : "player-fallback", 0);
       this.player.setDepth(12).setCollideWorldBounds(true);
       const body = this.player.body as Phaser.Physics.Arcade.Body;
       if (this.authoredPlayer) {
-        this.player.setScale(0.25).setOrigin(0.5, 0.90625);
-        body.setSize(88, 128, true);
-        body.setOffset(84, 104);
+        this.playerVisual = createPlayerVisualController(this, this.player);
+        body.setSize(29, 32, true);
+        body.setOffset(17.5, 26);
       } else {
         this.player.setOrigin(0.5, 0.90625);
         body.setSize(22, 32, true);
         body.setOffset(13, 26);
       }
       body.setMaxVelocity(PLAYER.speed, PLAYER.maxFallVelocity);
-      if (this.authoredPlayer && this.anims.exists("davide-idle")) {
-        this.player.anims.play("davide-idle");
-      }
     }
 
     private createCollisions() {
@@ -898,18 +945,27 @@ export function createAscentScene(
       this.physics.add.overlap(this.player, this.enemies, () => this.takeDamage("Rumore"));
       this.physics.add.overlap(this.player, this.bosses, () => this.takeDamage("Custode"));
       this.physics.add.overlap(this.player, this.hostileProjectiles, (_player, projectile) => {
-        if (isBodyObject(projectile)) projectile.destroy();
+        if (isBodyObject(projectile)) {
+          this.vfx?.playWorld("noise-impact", projectile.x, projectile.y);
+          projectile.destroy();
+        }
         this.takeDamage("Frammento ostile");
       });
       this.physics.add.overlap(this.player, this.pickups, (_player, pickup) => {
         if (isBodyObject(pickup)) this.collectPickup(pickup);
       });
       this.physics.add.overlap(this.playerProjectiles, this.enemies, (projectile, enemy) => {
-        if (isBodyObject(projectile)) projectile.destroy();
+        if (isBodyObject(projectile)) {
+          this.vfx?.playWorld("verse-impact", projectile.x, projectile.y);
+          projectile.destroy();
+        }
         if (isBodyObject(enemy)) this.damageEnemy(enemy);
       });
       this.physics.add.overlap(this.playerProjectiles, this.bosses, (projectile, boss) => {
-        if (isBodyObject(projectile)) projectile.destroy();
+        if (isBodyObject(projectile)) {
+          this.vfx?.playWorld("verse-impact", projectile.x, projectile.y, { scale: 1.18 });
+          projectile.destroy();
+        }
         if (isBodyObject(boss)) this.damageBoss(boss);
       });
     }
@@ -999,9 +1055,19 @@ export function createAscentScene(
       const grounded = body.blocked.down || body.touching.down;
       if (grounded) this.lastGroundedAt = time;
       if (grounded && !this.wasGrounded && body.velocity.y >= 0) {
+        const hardLanding = this.lastAirborneVelocityY > 420;
         this.landedUntil = time + 150;
-        this.emitAudio("land");
+        this.playerVisual?.play("land");
+        this.vfx?.playWorld(
+          hardLanding ? "landing-hard" : "landing-soft",
+          this.player.x,
+          this.player.y + 5,
+          { flipX: this.player.flipX },
+        );
+        this.emitAudio(hardLanding ? "land-hard" : "land");
       }
+      if (!grounded) this.lastAirborneVelocityY = Math.max(this.lastAirborneVelocityY, body.velocity.y);
+      else this.lastAirborneVelocityY = 0;
       this.wasGrounded = grounded;
 
       if (bridge.input.jumpPressed) {
@@ -1015,6 +1081,7 @@ export function createAscentScene(
         this.jumpBufferedAt = -Infinity;
         this.lastGroundedAt = -Infinity;
         this.jumpCut = false;
+        this.playerVisual?.play("jump-start");
         this.emitAudio("jump");
       }
       if (!bridge.input.jumpHeld && !this.jumpCut && body.velocity.y < 0) {
@@ -1051,23 +1118,23 @@ export function createAscentScene(
     }
 
     private updatePlayerAnimation(time: number, grounded: boolean) {
-      if (!this.authoredPlayer) return;
+      if (!this.authoredPlayer || !this.playerVisual) return;
       const body = this.player.body as Phaser.Physics.Arcade.Body;
       const firing = time - this.lastShotAt < 150;
-      let key = "davide-idle";
-      if (this.phase === "dying" && time + 280 >= this.hitUntil) key = "davide-defeat";
-      else if (time < this.hitUntil) key = "davide-hit";
-      else if (time < this.landedUntil) key = "davide-land";
+      let state: PlayerVisualState = "idle";
+      if (this.phase === "dying" && time + 280 >= this.hitUntil) state = "defeat";
+      else if (time < this.hitUntil) state = "hit";
+      else if (time < this.landedUntil) state = "land";
       else if (firing) {
-        key = grounded
+        state = grounded
           ? Math.abs(body.velocity.x) > 24
-            ? "davide-fire-diagonal"
-            : "davide-fire-up-ground"
-          : "davide-fire-up-air";
+            ? "fire-diagonal"
+            : "fire-up-ground"
+          : "fire-up-air";
       }
-      else if (!grounded) key = body.velocity.y < 0 ? "davide-jump" : "davide-fall";
-      else if (Math.abs(body.velocity.x) > 8) key = "davide-run";
-      if (this.anims.exists(key)) this.player.anims.play(key, true);
+      else if (!grounded) state = body.velocity.y < 0 ? "jump" : "fall";
+      else if (Math.abs(body.velocity.x) > 8) state = "run";
+      this.playerVisual.play(state);
     }
 
     private tryFire(time: number) {
@@ -1078,14 +1145,32 @@ export function createAscentScene(
       const body = this.player.body as Phaser.Physics.Arcade.Body;
       const grounded = body.blocked.down || body.touching.down;
       const diagonal = grounded && Math.abs(body.velocity.x) > 24;
-      const direction = body.velocity.x < 0 ? -1 : 1;
+      const direction = resolveFacingDirection(body.velocity.x, this.player.flipX);
       const baseAngle = diagonal ? -90 + 35 * direction : -90;
       const angles = time < this.rimaUntil ? [baseAngle - 10, baseAngle, baseAngle + 10] : [baseAngle];
+      const socketX = this.player.x + (diagonal ? 20 : 10) * direction;
+      const socketY = this.player.y - (grounded ? 48 : 46);
+      this.vfx?.playWorld("verse-muzzle", socketX, socketY, {
+        rotation: PhaserRuntime.Math.DegToRad(baseAngle),
+        flipX: direction < 0,
+      });
       angles.forEach((angle) => {
         const radians = PhaserRuntime.Math.DegToRad(angle);
-        const projectile = this.physics.add.sprite(this.player.x, this.player.y - 30, "verse-projectile");
-        projectile.setDepth(11).setRotation(radians + Math.PI / 2).setData("expiresAt", time + COMBAT.projectileLifetimeMs);
+        const projectile = this.physics.add.sprite(socketX, socketY, "verse-projectile");
+        const recipe = this.vfx?.applyProjectileVisual(projectile, "verse", 0);
+        if (recipe) projectile.setDisplaySize(recipe.recommendedDisplaySize.width, recipe.recommendedDisplaySize.height);
+        projectile
+          .setDepth(11)
+          .setRotation(radians + (recipe?.rotationOffset ?? Math.PI / 2))
+          .setData({
+            expiresAt: time + COMBAT.projectileLifetimeMs,
+            bornAt: time,
+            projectileKind: "verse",
+            lastTrailAt: time,
+          });
         const projectileBody = projectile.body as Phaser.Physics.Arcade.Body;
+        const hitbox = resolveVerseHitbox(angle, Boolean(recipe?.usesAtlas));
+        this.setWorldHitbox(projectile, hitbox.width, hitbox.height);
         projectileBody.setAllowGravity(false).setVelocity(
           Math.cos(radians) * COMBAT.projectileSpeed,
           Math.sin(radians) * COMBAT.projectileSpeed,
@@ -1121,6 +1206,7 @@ export function createAscentScene(
         const speedScale = bridge.assist ? 0.72 : 1;
 
         if (kind === "flyer") {
+          this.enemyVisuals.get(child as Phaser.Physics.Arcade.Sprite)?.play("move");
           body.setVelocity(
             Math.cos((time + seed) / 700) * 32 * speedScale,
             Math.sin((time + seed) / 520) * 20 * speedScale,
@@ -1128,12 +1214,40 @@ export function createAscentScene(
           if (Math.abs(child.y - originY) > 48) body.setVelocityY((originY - child.y) * 1.2);
         } else if (kind === "sentry") {
           body.setVelocity(0, 0);
+          const visual = this.enemyVisuals.get(child as Phaser.Physics.Arcade.Sprite);
           const nextAttackAt = child.getData("nextAttackAt") as number;
           if (time >= nextAttackAt && Math.abs(child.y - this.player.y) < 460) {
             child.setData("nextAttackAt", time + (bridge.assist ? 1_700 : 1_250));
-            this.fireHostileProjectile(child.x, child.y, this.player.x, this.player.y, time, 145);
+            // The shot belongs to gameplay time, not to the optional authored
+            // animation. Resetting only the visual also re-arms its one-shot.
+            visual?.reset("idle");
+            visual?.play("attack");
+            this.time.delayedCall(SENTRY_ATTACK_WINDUP_MS, () => {
+              if (!isBodyObject(child)) return;
+              if (
+                !canReleaseTimedAttack({
+                  actorActive: child.active,
+                  defeated: Boolean(child.getData("defeated")),
+                  hp: child.getData("hp") as number,
+                  bodyEnabled: child.body.enable,
+                  phase: this.phase,
+                })
+              ) {
+                return;
+              }
+              this.fireHostileProjectile(
+                child.x,
+                child.y,
+                this.player.x,
+                this.player.y,
+                this.elapsedMs,
+                145,
+              );
+              visual?.play("idle");
+            });
           }
         } else {
+          this.enemyVisuals.get(child as Phaser.Physics.Arcade.Sprite)?.play("move");
           let speed = kind === "roller" ? 92 : kind === "charger" ? 74 : kind === "mimic" ? 52 : 38;
           if (mechanics.includes("rolling-stones") && kind === "roller") speed *= 1.35;
           if (mechanics.includes("counterweights") && kind === "charger") speed *= 1.18;
@@ -1168,6 +1282,7 @@ export function createAscentScene(
           child.setData("active", true);
           this.activeBoss = child as Phaser.Physics.Arcade.Sprite;
           this.emitAudio("boss-enter");
+          this.bossVisuals.get(child as Phaser.Physics.Arcade.Sprite)?.play("move");
           this.emitAnnouncement(`${BOSS_NAMES[id]} custodisce il passaggio.`);
         }
         if (!(child.getData("active") as boolean)) return;
@@ -1185,6 +1300,7 @@ export function createAscentScene(
             if (child.active) bossSprite.clearTint();
           });
           this.emitAnnouncement(`${BOSS_NAMES[id]} — fase ${phase}.`);
+          this.vfx?.playAttached("boss-telegraph", bossSprite, { scale: 1 + phase * 0.08 });
         }
         const originX = child.getData("originX") as number;
         const originY = child.getData("originY") as number;
@@ -1192,14 +1308,30 @@ export function createAscentScene(
         child.body.setVelocityX(Math.sin(time / (700 - phase * 90)) * travel);
         child.body.setVelocityY((originY - child.y) * 1.3);
         if (Math.abs(child.x - originX) > 145) child.x = originX + Math.sign(child.x - originX) * 145;
+        this.bossVisuals.get(bossSprite)?.play("move");
 
         const nextAttackAt = child.getData("nextAttackAt") as number;
         if (time >= nextAttackAt) {
-          child.setData("nextAttackAt", time + 360);
+          child.setData("nextAttackAt", time + 520);
           bossSprite.setTint(0xffd166);
-          this.time.delayedCall(230, () => {
-            if (!child.active || this.phase !== "playing") return;
+          this.bossVisuals.get(bossSprite)?.play("telegraph");
+          this.vfx?.playAttached("boss-telegraph", bossSprite, { scale: 1.15 });
+          this.emitAudio("boss-telegraph");
+          this.time.delayedCall(400, () => {
+            if (!isBodyObject(child)) return;
+            if (
+              !canReleaseTimedAttack({
+                actorActive: child.active,
+                defeated: Boolean(child.getData("defeated")),
+                hp: child.getData("hp") as number,
+                bodyEnabled: child.body.enable,
+                phase: this.phase,
+              })
+            ) {
+              return;
+            }
             bossSprite.clearTint();
+            this.bossVisuals.get(bossSprite)?.play("attack");
             child.setData("nextAttackAt", this.elapsedMs + (bridge.assist ? 1_250 : 960) - phase * 90);
             const spread = phase === 1 ? [0] : phase === 2 ? [-34, 34] : [-52, 0, 52];
             spread.forEach((offset) => {
@@ -1227,11 +1359,30 @@ export function createAscentScene(
     ) {
       const direction = new PhaserRuntime.Math.Vector2(targetX - x, targetY - y).normalize().scale(speed);
       const projectile = this.physics.add.sprite(x, y, "noise-projectile");
-      projectile.setDepth(10).setData("expiresAt", time + 3_000);
+      const recipe = this.vfx?.applyProjectileVisual(projectile, "noise", 0);
+      if (recipe) projectile.setDisplaySize(recipe.recommendedDisplaySize.width, recipe.recommendedDisplaySize.height);
+      projectile.setDepth(10).setData({
+        expiresAt: time + 3_000,
+        bornAt: time,
+        projectileKind: "noise",
+        lastTrailAt: time,
+      });
+      this.setWorldHitbox(projectile, recipe?.usesAtlas ? 12 : 9, recipe?.usesAtlas ? 10 : 9);
       (projectile.body as Phaser.Physics.Arcade.Body)
         .setAllowGravity(false)
         .setVelocity(direction.x, direction.y);
       this.hostileProjectiles.add(projectile);
+    }
+
+    private setWorldHitbox(
+      projectile: Phaser.Physics.Arcade.Sprite,
+      worldWidth: number,
+      worldHeight: number,
+    ) {
+      const body = projectile.body as Phaser.Physics.Arcade.Body;
+      const sourceWidth = worldWidth / Math.max(0.001, Math.abs(projectile.scaleX));
+      const sourceHeight = worldHeight / Math.max(0.001, Math.abs(projectile.scaleY));
+      body.setSize(sourceWidth, sourceHeight, true);
     }
 
     private updateProjectiles(time: number) {
@@ -1239,6 +1390,25 @@ export function createAscentScene(
         group.getChildren().forEach((child) => {
           if (!isBodyObject(child)) return;
           const expiresAt = child.getData("expiresAt") as number;
+          const bornAt = (child.getData("bornAt") as number | undefined) ?? time;
+          const projectileKind = child.getData("projectileKind") as "verse" | "noise" | undefined;
+          if (projectileKind) {
+            const recipe = this.vfx?.applyProjectileVisual(
+              child as Phaser.Physics.Arcade.Sprite,
+              projectileKind,
+              time - bornAt,
+            );
+            if (recipe?.trail) {
+              const lastTrailAt = (child.getData("lastTrailAt") as number | undefined) ?? bornAt;
+              if (time - lastTrailAt >= 72) {
+                child.setData("lastTrailAt", time);
+                this.vfx?.playWorld(recipe.trail, child.x, child.y, {
+                  rotation: (child as Phaser.Physics.Arcade.Sprite).rotation,
+                  scale: 0.7,
+                });
+              }
+            }
+          }
           if (
             time >= expiresAt ||
             child.x < -32 ||
@@ -1288,6 +1458,8 @@ export function createAscentScene(
 
     private collectPickup(pickup: BodyObject) {
       const kind = pickup.getData("kind") as PickupKind;
+      const pickupX = pickup.x;
+      const pickupY = pickup.y;
       if (kind === "voice") {
         this.voices += 1;
         this.strofe = Math.floor(this.voices / 3);
@@ -1300,15 +1472,41 @@ export function createAscentScene(
         this.shield = true;
       }
       pickup.destroy();
+      const pickupTint =
+        kind === "voice"
+          ? 0x39f4ff
+          : kind === "breath"
+            ? 0x76e6a6
+            : kind === "rima"
+              ? 0xff7fd1
+              : 0xffd166;
+      this.vfx?.playWorld("pickup", pickupX, pickupY, { tint: pickupTint });
       this.emitAudio("pickup");
       this.emitSnapshot(true);
     }
 
     private damageEnemy(enemy: BodyObject) {
+      if (enemy.getData("defeated")) return;
       const hp = (enemy.getData("hp") as number) - 1;
       enemy.setData("hp", hp);
+      this.vfx?.playWorld("enemy-hit", enemy.x, enemy.y - 4);
+      this.emitAudio("enemy-hit");
       if (hp <= 0) {
-        enemy.destroy();
+        enemy.setData("defeated", true);
+        enemy.body.enable = false;
+        if (isDynamicBodyObject(enemy)) enemy.body.stop();
+        this.enemyVisuals.get(enemy as Phaser.Physics.Arcade.Sprite)?.destroy();
+        const destroyEnemy = () => {
+          if (enemy.active) enemy.destroy();
+        };
+        this.vfx?.playWorld("enemy-dissolve", enemy.x, enemy.y, {
+          scale: 1.05,
+          onComplete: destroyEnemy,
+        });
+        // Pool reclamation may cancel a visual callback, so gameplay cleanup
+        // always owns an independent, idempotent timer.
+        this.time.delayedCall(430, destroyEnemy);
+        this.emitAudio("enemy-break");
       } else if ("setTintFill" in enemy) {
         (enemy as Phaser.Physics.Arcade.Sprite).setTintFill();
         this.time.delayedCall(70, () => {
@@ -1318,23 +1516,38 @@ export function createAscentScene(
     }
 
     private damageBoss(boss: BodyObject) {
+      if (boss.getData("defeated")) return;
       const hp = Math.max(0, (boss.getData("hp") as number) - 1);
       boss.setData("hp", hp);
       this.emitAudio("boss-hit");
+      this.bossVisuals.get(boss as Phaser.Physics.Arcade.Sprite)?.play("hit");
+      this.vfx?.playWorld("enemy-hit", boss.x, boss.y - 8, { scale: 1.24 });
       if (!bridge.reducedMotion) this.cameras.main.shake(55, 0.0025);
       if (hp > 0) return;
 
       const id = boss.getData("id") as BossId;
+      boss.setData("defeated", true);
+      boss.body.enable = false;
+      if (isDynamicBodyObject(boss)) boss.body.stop();
       const gate = this.bossGates.get(id);
       if (gate) {
         this.staticPlatforms.remove(gate);
         gate.destroy();
         this.bossGates.delete(id);
       }
-      boss.destroy();
       if (this.activeBoss === boss) this.activeBoss = null;
+      const bossVisual = this.bossVisuals.get(boss as Phaser.Physics.Arcade.Sprite);
+      bossVisual?.play("defeat");
+      const destroyBoss = () => {
+        if (boss.active) boss.destroy();
+      };
+      this.vfx?.playWorld("boss-burst", boss.x, boss.y, {
+        scale: 1.45,
+        onComplete: destroyBoss,
+      });
+      this.time.delayedCall(700, destroyBoss);
       this.emitAnnouncement(`${BOSS_NAMES[id]} si dissolve in lettere.`);
-      this.emitAudio("checkpoint");
+      this.emitAudio("boss-break");
       this.emitSnapshot(true);
     }
 
@@ -1349,7 +1562,8 @@ export function createAscentScene(
       if (this.shield) {
         this.shield = false;
         this.invulnerableUntil = this.elapsedMs + (bridge.assist ? ASSIST_PLAYER.invulnerableMs : PLAYER.invulnerableMs);
-        this.emitAudio("hit");
+        this.vfx?.playAttached("shield-break", this.player, { scale: 1.1 });
+        this.emitAudio("shield-break");
         if (isFall) this.respawnAtCheckpoint();
         return;
       }
@@ -1359,6 +1573,10 @@ export function createAscentScene(
       this.hitUntil = this.elapsedMs + 800;
       this.statusText = `${reason} — ${Math.max(0, this.lives)} vite`;
       this.emitAudio("hit");
+      this.playerVisual?.play("hit", {
+        onComplete: () => this.playerVisual?.play("defeat"),
+      });
+      this.vfx?.playAttached("player-hit", this.player);
       const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
       playerBody.stop();
       playerBody.enable = false;
@@ -1393,10 +1611,10 @@ export function createAscentScene(
       const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
       playerBody.enable = true;
       this.player.setPosition(spawn.x, spawn.y).setAlpha(1).clearTint();
-      this.landedUntil = this.elapsedMs + 220;
-      if (this.authoredPlayer && this.anims.exists("davide-respawn")) {
-        this.player.anims.play("davide-respawn", true);
-      }
+      this.landedUntil = -Infinity;
+      this.playerVisual?.reset("respawn");
+      this.vfx?.playAttached("player-respawn", this.player, { offsetY: 4 });
+      this.emitAudio("respawn");
       playerBody.reset(spawn.x, spawn.y);
       playerBody.setVelocity(0, 0);
       this.invulnerableUntil = this.elapsedMs + (bridge.assist ? ASSIST_PLAYER.invulnerableMs : PLAYER.invulnerableMs);
@@ -1425,6 +1643,12 @@ export function createAscentScene(
       this.phase = "complete";
       this.statusText = "E quindi uscimmo a riveder le stelle";
       this.physics.pause();
+      this.playerVisual?.pause();
+      this.enemyVisuals.forEach((visual) => visual.pause());
+      this.bossVisuals.forEach((visual) => visual.pause());
+      this.vfx?.playWorld("boss-burst", this.player.x, this.player.y - 36, {
+        scale: 1.65,
+      });
       let isRecord = false;
       if (this.recordEligible && (this.bestMs === null || this.elapsedMs < this.bestMs)) {
         this.bestMs = Math.round(this.elapsedMs);

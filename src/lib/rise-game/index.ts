@@ -15,7 +15,7 @@ export {
   validateCircleLevels,
   worldYToQuota,
 } from "./level-data";
-export { INITIAL_GAME_INPUT } from "./types";
+export { GAME_AUDIO_CUES, INITIAL_GAME_INPUT } from "./types";
 export type {
   ActIndex,
   BossId,

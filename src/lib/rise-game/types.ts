@@ -51,17 +51,27 @@ export type GameSnapshot = Readonly<{
   statusText: string;
 }>;
 
-export type GameAudioCue =
-  | "jump"
-  | "land"
-  | "verse"
-  | "hit"
-  | "pickup"
-  | "checkpoint"
-  | "boss-enter"
-  | "boss-hit"
-  | "complete"
-  | "game-over";
+export const GAME_AUDIO_CUES = [
+  "jump",
+  "land",
+  "land-hard",
+  "verse",
+  "hit",
+  "enemy-hit",
+  "enemy-break",
+  "pickup",
+  "shield-break",
+  "respawn",
+  "checkpoint",
+  "boss-enter",
+  "boss-telegraph",
+  "boss-hit",
+  "boss-break",
+  "complete",
+  "game-over",
+] as const;
+
+export type GameAudioCue = (typeof GAME_AUDIO_CUES)[number];
 
 export type GameEvent =
   | Readonly<{ type: "audio"; cue: GameAudioCue }>
@@ -85,5 +95,7 @@ export interface GameController {
   setReducedMotion(enabled: boolean): void;
   /** Present only in development, for the deterministic browser campaign test. */
   verifyCampaign?(): GameSnapshot;
+  /** Present only in development, for exercising the real damage/respawn lifecycle. */
+  verifyDamageRespawn?(): Promise<GameSnapshot>;
   destroy(): void;
 }

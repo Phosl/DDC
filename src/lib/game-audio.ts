@@ -1,14 +1,6 @@
-export type GameAudioCue =
-  | "jump"
-  | "land"
-  | "verse"
-  | "hit"
-  | "pickup"
-  | "checkpoint"
-  | "boss-enter"
-  | "boss-hit"
-  | "complete"
-  | "game-over";
+import type { GameAudioCue } from "./rise-game/types";
+
+export type { GameAudioCue } from "./rise-game/types";
 
 type AudioContextWindow = Window &
   typeof globalThis & {
@@ -111,6 +103,10 @@ export class GameAudioEngine {
         this.playNoiseBurst(145, 0.1, 0.065);
         this.playTone(82.41, 61.74, "triangle", 0, 0.1, 0.04);
         break;
+      case "land-hard":
+        this.playNoiseBurst(118, 0.16, 0.074);
+        this.playTone(73.42, 46.25, "triangle", 0, 0.18, 0.048);
+        break;
       case "verse":
         this.playTone(659.25, 1_318.51, "square", 0, 0.09, 0.028);
         this.playNoiseBurst(1_650, 0.055, 0.018);
@@ -119,8 +115,25 @@ export class GameAudioEngine {
         this.playNoiseBurst(185, 0.26, 0.11);
         this.playTone(116.54, 43.65, "sawtooth", 0, 0.3, 0.07);
         break;
+      case "enemy-hit":
+        this.playTone(349.23, 233.08, "triangle", 0, 0.085, 0.021);
+        this.playNoiseBurst(820, 0.05, 0.014);
+        break;
+      case "enemy-break":
+        this.playNoiseBurst(560, 0.12, 0.035);
+        this.playTone(293.66, 587.33, "square", 0, 0.12, 0.028);
+        this.playTone(440, 880, "sine", 0.045, 0.15, 0.024);
+        break;
       case "pickup":
         this.playChord([440, 659.25, 880], 0.055, 0.28, "sine");
+        break;
+      case "shield-break":
+        this.playNoiseBurst(2_150, 0.16, 0.034);
+        this.playTone(987.77, 493.88, "triangle", 0, 0.16, 0.034);
+        this.playTone(1_318.51, 659.25, "sine", 0.035, 0.18, 0.025);
+        break;
+      case "respawn":
+        this.playChord([110, 164.81, 220, 329.63], 0.055, 0.34, "sine");
         break;
       case "checkpoint":
         this.playChord([146.83, 220, 293.66, 440], 0.09, 0.48, "triangle");
@@ -130,9 +143,19 @@ export class GameAudioEngine {
         this.playTone(55, 46.25, "sawtooth", 0, 0.72, 0.085);
         this.playTone(73.42, 55, "square", 0.18, 0.58, 0.035);
         break;
+      case "boss-telegraph":
+        this.playTone(73.42, 92.5, "sine", 0, 0.3, 0.04);
+        this.playTone(146.83, 185, "triangle", 0.12, 0.24, 0.026);
+        break;
       case "boss-hit":
         this.playNoiseBurst(410, 0.18, 0.08);
         this.playTone(220, 880, "square", 0, 0.16, 0.036);
+        break;
+      case "boss-break":
+        this.playNoiseBurst(260, 0.32, 0.064);
+        this.playTone(146.83, 293.66, "square", 0, 0.24, 0.042);
+        this.playTone(220, 659.25, "triangle", 0.08, 0.3, 0.036);
+        this.playTone(329.63, 987.77, "sine", 0.16, 0.38, 0.03);
         break;
       case "complete":
         this.finish(true);
@@ -140,6 +163,8 @@ export class GameAudioEngine {
       case "game-over":
         this.finish(false);
         break;
+      default:
+        cue satisfies never;
     }
   }
 

@@ -2,6 +2,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 const baseURL = externalBaseUrl ?? "http://127.0.0.1:3001";
+const localChromeExecutable = process.env.PLAYWRIGHT_CHROME_EXECUTABLE;
+const localChromeLaunch = localChromeExecutable
+  ? { launchOptions: { executablePath: localChromeExecutable } }
+  : {};
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -18,11 +22,11 @@ export default defineConfig({
   projects: [
     {
       name: "desktop-chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: { ...devices["Desktop Chrome"], ...localChromeLaunch },
     },
     {
       name: "mobile-chromium",
-      use: { ...devices["Pixel 7"] },
+      use: { ...devices["Pixel 7"], ...localChromeLaunch },
     },
     {
       name: "mobile-webkit",

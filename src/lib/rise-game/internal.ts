@@ -9,6 +9,7 @@ export interface AscentSceneHandle {
   setAssist(enabled: boolean): void;
   setReducedMotion(enabled: boolean): void;
   verifyCampaign(): GameSnapshot;
+  verifyDamageRespawn(): Promise<GameSnapshot>;
 }
 
 export type RuntimeBridge = {

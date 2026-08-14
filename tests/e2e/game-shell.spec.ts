@@ -28,6 +28,8 @@ test.describe("Cantica Zero game shell", () => {
 
   test("accepts simultaneous touch controls without losing the canvas", async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.startsWith("mobile"), "Multi-touch is a mobile interaction check.");
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
 
     await page.getByRole("button", { name: "Inizia la Cantica" }).click();
     const right = page.getByRole("button", { name: "Destra", exact: true });
@@ -40,6 +42,7 @@ test.describe("Cantica Zero game shell", () => {
     await right.dispatchEvent("pointerup", { pointerId: 1, pointerType: "touch", isPrimary: true, buttons: 0 });
 
     await expect(page.getByTestId("rise-game-canvas")).toHaveCount(1);
+    expect(pageErrors).toEqual([]);
   });
 
   test("completes the deterministic IX to I campaign through all three bosses", async ({ page }) => {
@@ -55,5 +58,32 @@ test.describe("Cantica Zero game shell", () => {
       recordEligible: true,
     });
     await expect(page.getByRole("dialog", { name: "Cantica completa" })).toBeVisible();
+  });
+
+  test("survives damage, defeat animation and checkpoint respawn", async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await page.getByRole("button", { name: "Inizia la Cantica" }).click();
+
+    const snapshot = await page.evaluate(() =>
+      window.__CANTICA_ZERO_TEST__?.verifyDamageRespawn?.(),
+    );
+
+    expect(snapshot).toMatchObject({ phase: "playing", lives: 2 });
+    expect(pageErrors).toEqual([]);
+    await expect(page.getByTestId("rise-game-canvas")).toHaveCount(1);
+  });
+
+  test("keeps the same gameplay under reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.reload();
+    await page.getByRole("button", { name: "Inizia la Cantica" }).click();
+
+    const snapshot = await page.evaluate(() =>
+      window.__CANTICA_ZERO_TEST__?.verifyDamageRespawn?.(),
+    );
+
+    expect(snapshot).toMatchObject({ phase: "playing", lives: 2 });
+    await expect(page.getByTestId("rise-game-canvas")).toHaveCount(1);
   });
 });

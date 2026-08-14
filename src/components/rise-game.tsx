@@ -457,7 +457,12 @@ export function RiseGame() {
   const bindPointer = (lane: InputLane) => ({
     onPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
       event.preventDefault();
-      event.currentTarget.setPointerCapture(event.pointerId);
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Some synthetic or already-cancelled pointers cannot be captured.
+        // The input token still guarantees a matching release path.
+      }
       pressInput(lane, `pointer:${event.pointerId}:${lane}`);
     },
     onPointerUp(event: React.PointerEvent<HTMLButtonElement>) {

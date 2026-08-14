@@ -129,6 +129,15 @@ export async function createRiseGame(
             }
             return bridge.scene.verifyCampaign();
           },
+    verifyDamageRespawn:
+      process.env.NODE_ENV === "production"
+        ? undefined
+        : async () => {
+            if (destroyed || !bridge.scene) {
+              throw new Error("Cantica Zero is not ready for verification.");
+            }
+            return bridge.scene.verifyDamageRespawn();
+          },
     destroy() {
       if (destroyed) return;
       destroyed = true;
