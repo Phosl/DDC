@@ -150,6 +150,7 @@ const LEVEL_LAYOUTS: readonly LevelLayoutSpec[] = [
     routeRows: [62, 59, 56, 53, 50, 47, 44, 40, 36, 32, 28, 24, 20, 16, 12, 9, 6, 3],
     x: [5, 8, 11, 14, 17, 19, 16, 12, 8, 5, 9, 13, 17, 19, 15, 11, 14, 16],
     kinds: ["#", "-", "-", "-", "-", "-", "-", "H", "-", "-", "-", "C", "-", "-", "-", "-", "-", "#"],
+    extras: [{ column: 14, row: 6, width: 7, symbol: "-" }],
     enemies: [
       { routeIndex: 4, symbol: "E", offset: 1 },
       { routeIndex: 8, symbol: "E", offset: -1 },
