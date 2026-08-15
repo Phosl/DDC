@@ -1130,7 +1130,11 @@ export function createAscentScene(
       );
       platform.setStrokeStyle(2, palette.shadow, authoredVisual ? 0.4 : 1).setDepth(1);
       this.physics.add.existing(platform, true);
-      platform.setData("kind", kind);
+      platform.setData({
+        kind,
+        row,
+        levelOrderFromBottom: level.orderFromBottom,
+      });
       let visualHeight: number | null = null;
       if (authoredVisual) {
         const frame = actIndex * 8 + (kind === "crumble" ? 2 : kind === "one-way" ? 1 : 0);
@@ -1469,6 +1473,21 @@ export function createAscentScene(
     ) {
       if (!isDynamicBodyObject(moving) || !isBodyObject(platform)) return false;
       const body = moving.body;
+      if (
+        moving === this.player &&
+        platform.body instanceof PhaserRuntime.Physics.Arcade.StaticBody &&
+        platform.getData("kind") === "one-way" &&
+        platform.getData("levelOrderFromBottom") === 0 &&
+        platform.getData("row") === 3 &&
+        body.velocity.y < 0 &&
+        body.right > platform.body.left + 2 &&
+        body.left < platform.body.right - 2 &&
+        body.bottom <= platform.body.top + 28
+      ) {
+        body.setVelocityY(0);
+        body.y = platform.body.top - body.height - 1;
+        return true;
+      }
       const platformVelocityY =
         platform.body instanceof PhaserRuntime.Physics.Arcade.Body
           ? platform.body.velocity.y
