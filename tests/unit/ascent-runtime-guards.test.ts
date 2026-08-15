@@ -6,6 +6,7 @@ import {
   resolveStablePlatformPosition,
   resolveSourceHitbox,
   resolveVerseHitbox,
+  resolvePointerAimVector,
   resolveAimFacingDirection,
   resolveFacingDirection,
 } from "../../src/lib/rise-game/ascent-scene";
@@ -36,6 +37,40 @@ describe("ascent timed attack guards", () => {
     expect(resolveAimFacingDirection({ x: -0.8, y: 0.2 }, 160, false)).toBe(-1);
     expect(resolveAimFacingDirection({ x: 0.8, y: 0.2 }, -160, true)).toBe(1);
     expect(resolveAimFacingDirection({ x: 0.05, y: -1 }, -160, false)).toBe(-1);
+  });
+
+  it("aims from the Verse socket through the camera viewport", () => {
+    const aim = resolvePointerAimVector({
+      viewportX: 768,
+      viewportY: 200,
+      cameraScrollX: -480,
+      cameraScrollY: 8_000,
+      originX: 192,
+      originY: 8_272,
+    });
+
+    expect(aim?.x).toBeCloseTo(0.8, 5);
+    expect(aim?.y).toBeCloseTo(-0.6, 5);
+    expect(
+      resolvePointerAimVector({
+        viewportX: 672,
+        viewportY: 272,
+        cameraScrollX: -480,
+        cameraScrollY: 8_000,
+        originX: 192,
+        originY: 8_272,
+      }),
+    ).toBeNull();
+    expect(
+      resolvePointerAimVector({
+        viewportX: Number.NaN,
+        viewportY: 0,
+        cameraScrollX: 0,
+        cameraScrollY: 0,
+        originX: 0,
+        originY: 0,
+      }),
+    ).toBeNull();
   });
 
   it("rotates the Verse collision box with vertical and diagonal shots", () => {
@@ -93,5 +128,21 @@ describe("ascent timed attack guards", () => {
     expect(moved).toEqual({ x: 174, y: 442 });
     expect(moved.x - first.x).toBe(36);
     expect(moved.y - first.y).toBe(-24);
+  });
+
+  it("keeps assisted respawns inside resized wide-world bounds", () => {
+    const leftSide = resolveStablePlatformPosition({
+      platformX: -300,
+      platformY: 500,
+      platformLeft: -346,
+      platformRight: -240,
+      offsetX: -70,
+      offsetY: -34,
+      playerWidth: 22,
+      worldWidth: 1_076,
+      worldLeft: -346,
+    });
+
+    expect(leftSide).toEqual({ x: -322, y: 466 });
   });
 });

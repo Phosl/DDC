@@ -178,6 +178,13 @@
   touch-action: none;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .canvasHost,
+  .canvasHost canvas {
+    cursor: crosshair;
+  }
+}
+
 .chapter {
   position: absolute;
   z-index: 2;
@@ -797,8 +804,6 @@
 @media (min-width: 64rem) and (pointer: fine) {
   .game[data-display-mode="native-fullscreen"],
   .game[data-display-mode="viewport-fullscreen"] {
-    --game-canvas-width: min(100vw, calc(100dvh * 4 / 7));
-    --game-side-width: calc((100vw - var(--game-canvas-width)) / 2);
     position: fixed;
     z-index: 2147483000;
     inset: 0;
@@ -810,47 +815,66 @@
     margin: 0;
     overflow: hidden;
     padding: 0;
-    background: var(--game-black);
+    background: #08131c;
   }
 
   .game[data-display-mode="native-fullscreen"] .toolbar,
   .game[data-display-mode="viewport-fullscreen"] .toolbar {
     position: absolute;
     z-index: 20;
-    top: max(0.75rem, env(safe-area-inset-top));
-    right: max(0.75rem, env(safe-area-inset-right));
+    top: max(0.55rem, env(safe-area-inset-top));
+    right: max(0.55rem, env(safe-area-inset-right));
     display: flex;
-    width: min(35rem, calc(var(--game-side-width) - 1.5rem));
+    width: auto;
+    max-width: calc(50vw - 8rem);
     justify-content: flex-end;
     margin: 0;
-    padding: 0.5rem;
-    background: rgba(8, 8, 8, 0.74);
-    backdrop-filter: blur(8px);
+    padding: 0.3rem;
+    border: 1px solid rgba(244, 240, 232, 0.2);
+    background: rgba(8, 8, 8, 0.68);
+    box-shadow: 0.22rem 0.22rem 0 rgba(39, 224, 209, 0.18);
+    backdrop-filter: blur(10px);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .toolButton,
+  .game[data-display-mode="viewport-fullscreen"] .toolButton {
+    min-height: 2rem;
+    padding-inline: clamp(0.45rem, 0.75vw, 0.68rem);
+    border-width: 1px;
+    font-size: clamp(0.48rem, 0.58vw, 0.6rem);
   }
 
   .game[data-display-mode="native-fullscreen"] .hud,
   .game[data-display-mode="viewport-fullscreen"] .hud {
     position: absolute;
     z-index: 20;
-    top: max(0.75rem, env(safe-area-inset-top));
-    left: max(0.75rem, env(safe-area-inset-left));
+    top: max(0.55rem, env(safe-area-inset-top));
+    left: max(0.55rem, env(safe-area-inset-left));
     display: grid;
-    width: min(34rem, calc(var(--game-side-width) - 1.5rem));
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(25rem, calc(50vw - 8rem));
+    grid-template-columns: 1.2fr 0.86fr 0.92fr 0.72fr;
     margin: 0;
-    background: rgba(8, 8, 8, 0.82);
-    backdrop-filter: blur(8px);
+    border-width: 1px;
+    background: rgba(8, 8, 8, 0.68);
+    box-shadow: 0.22rem 0.22rem 0 rgba(255, 42, 120, 0.22);
+    backdrop-filter: blur(10px);
   }
 
   .game[data-display-mode="native-fullscreen"] .hudMetric,
   .game[data-display-mode="viewport-fullscreen"] .hudMetric {
-    min-height: 3.5rem;
-    padding: 0.62rem;
+    min-height: 2.55rem;
+    gap: 0.1rem;
+    padding: 0.36rem 0.45rem;
   }
 
   .game[data-display-mode="native-fullscreen"] .hudMetric strong,
   .game[data-display-mode="viewport-fullscreen"] .hudMetric strong {
-    font-size: clamp(0.82rem, 1.25vw, 1.05rem);
+    font-size: clamp(0.66rem, 0.82vw, 0.88rem);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .hudMetric span,
+  .game[data-display-mode="viewport-fullscreen"] .hudMetric span {
+    font-size: clamp(0.38rem, 0.44vw, 0.48rem);
   }
 
   .game[data-display-mode="native-fullscreen"] .stage,
@@ -873,41 +897,46 @@
   .game[data-display-mode="native-fullscreen"] .canvasHost canvas,
   .game[data-display-mode="viewport-fullscreen"] .canvasHost canvas {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: var(--game-canvas-width) !important;
-    height: min(100dvh, calc(100vw * 7 / 4)) !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
     margin: 0 !important;
     object-fit: contain;
-    transform: translate(-50%, -50%);
   }
 
   .game[data-display-mode="native-fullscreen"] .chapter,
   .game[data-display-mode="viewport-fullscreen"] .chapter {
-    top: clamp(5.3rem, 13vh, 7.2rem);
-    right: 50%;
-    left: auto;
-    width: min(24rem, 44vw);
+    top: max(0.55rem, env(safe-area-inset-top));
+    right: auto;
+    left: 50%;
+    width: min(20rem, 22vw);
     box-sizing: border-box;
-    transform: translateX(50%);
+    padding: 0.34rem 0.48rem;
+    background: rgba(8, 8, 8, 0.68);
+    backdrop-filter: blur(10px);
+    transform: translateX(-50%);
   }
 
   .game[data-display-mode="native-fullscreen"] .breath,
   .game[data-display-mode="viewport-fullscreen"] .breath {
-    top: clamp(8.9rem, 20vh, 10.8rem);
-    right: 50%;
-    left: auto;
-    width: min(22rem, 40vw);
-    transform: translateX(50%);
+    top: max(3.65rem, calc(env(safe-area-inset-top) + 3.1rem));
+    right: auto;
+    left: 50%;
+    width: min(18rem, 24vw);
+    padding: 0.2rem 0.34rem;
+    background: rgba(8, 8, 8, 0.56);
+    transform: translateX(-50%);
   }
 
   .game[data-display-mode="native-fullscreen"] .bossBar,
   .game[data-display-mode="viewport-fullscreen"] .bossBar {
-    top: clamp(10.4rem, 24vh, 12.3rem);
-    right: 50%;
-    left: auto;
-    width: min(22rem, 40vw);
-    transform: translateX(50%);
+    top: max(5rem, calc(env(safe-area-inset-top) + 4.45rem));
+    right: auto;
+    left: 50%;
+    width: min(18rem, 24vw);
+    padding: 0.2rem 0.34rem;
+    background: rgba(8, 8, 8, 0.56);
+    transform: translateX(-50%);
   }
 
   .game[data-display-mode="native-fullscreen"] .touchControls,
@@ -919,58 +948,38 @@
 
   .game[data-display-mode="native-fullscreen"] .statusLine,
   .game[data-display-mode="viewport-fullscreen"] .statusLine {
-    position: absolute;
-    z-index: 20;
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
-    left: max(0.75rem, env(safe-area-inset-left));
-    display: flex;
-    width: min(32rem, calc(var(--game-side-width) - 1.5rem));
-    box-sizing: border-box;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 0.7rem;
-    margin: 0;
-    padding: 0.82rem;
-    border: 1px solid var(--game-line);
-    background: rgba(8, 8, 8, 0.78);
-    backdrop-filter: blur(8px);
+    display: none;
   }
 
   .game[data-display-mode="native-fullscreen"] .instructions,
   .game[data-display-mode="viewport-fullscreen"] .instructions {
-    position: absolute;
-    z-index: 20;
-    right: max(0.75rem, env(safe-area-inset-right));
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
-    display: grid;
-    width: min(36rem, calc(var(--game-side-width) - 1.5rem));
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    box-sizing: border-box;
-    padding: 0;
-    border-top: 1px solid var(--game-line);
-    border-left: 1px solid var(--game-line);
-    background: rgba(8, 8, 8, 0.78);
-    backdrop-filter: blur(8px);
-  }
-
-  .game[data-display-mode="native-fullscreen"] .instructions div,
-  .game[data-display-mode="viewport-fullscreen"] .instructions div {
-    min-height: 3.5rem;
-    padding: 0.58rem;
-    border-right: 1px solid var(--game-line);
-    border-bottom: 1px solid var(--game-line);
+    display: none;
   }
 
   .game[data-display-mode="native-fullscreen"] .audioNotice,
   .game[data-display-mode="viewport-fullscreen"] .audioNotice {
     position: absolute;
     z-index: 21;
-    right: max(0.75rem, env(safe-area-inset-right));
-    bottom: 5.5rem;
-    width: min(32rem, calc(var(--game-side-width) - 1.5rem));
+    right: max(0.55rem, env(safe-area-inset-right));
+    bottom: max(0.55rem, env(safe-area-inset-bottom));
+    width: min(18rem, calc(100vw - 1.1rem));
     margin: 0;
     padding: 0.55rem;
     background: rgba(8, 8, 8, 0.84);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .overlay,
+  .game[data-display-mode="viewport-fullscreen"] .overlay {
+    padding: clamp(0.75rem, 3vw, 2rem);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .overlayContent,
+  .game[data-display-mode="viewport-fullscreen"] .overlayContent {
+    width: min(100%, 27rem);
+  }
+
+  .game[data-display-mode="native-fullscreen"] .overlayContent h3,
+  .game[data-display-mode="viewport-fullscreen"] .overlayContent h3 {
+    font-size: clamp(2rem, 5vw, 4rem);
   }
 }

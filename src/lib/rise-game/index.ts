@@ -52,4 +52,5 @@ export type {
   GamePhase,
   GameSnapshot,
   GameTelemetry,
+  GameViewportMode,
 } from "./types";

@@ -11,6 +11,8 @@ export type AimVector = Readonly<{
   y: number;
 }>;
 
+export type GameViewportMode = "portrait" | "adaptive-wide";
+
 /** `null` keeps the contextual keyboard trajectory (up or 35-degree diagonal). */
 export const NEUTRAL_AIM: null = null;
 
@@ -120,18 +122,22 @@ export type CreateRiseGameOptions = Readonly<{
   parent: HTMLElement;
   assist?: boolean;
   reducedMotion?: boolean;
+  viewportMode?: GameViewportMode;
   onSnapshot: (snapshot: GameSnapshot) => void;
   onEvent?: (event: GameEvent) => void;
 }>;
 
 export interface GameController {
   setInput(input: Partial<GameInput>): void;
+  /** Resolves a mouse position in CSS pixels into an exact player-relative aim. */
+  resolvePointerAim(clientX: number, clientY: number): AimVector | null;
   clearInput(): void;
   pause(reason?: string): void;
   resume(): void;
   restart(mode: "full-run" | "continue-act"): void;
   setAssist(enabled: boolean): void;
   setReducedMotion(enabled: boolean): void;
+  setViewportMode(mode: GameViewportMode): void;
   /** Present only in development, for the deterministic browser campaign test. */
   verifyCampaign?(): GameSnapshot;
   /** Present only in development, for exercising the real damage/respawn lifecycle. */

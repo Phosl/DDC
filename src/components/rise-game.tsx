@@ -41,6 +41,7 @@ const CIRCLES: Record<string, { label: string; act: string }> = {
 };
 
 type InputLane = "left" | "right" | "jump" | "fire";
+type AimInputSource = "mouse:aim" | "touch:aim" | "gamepad:aim";
 type AimInputState = Readonly<{
   aim: AimVector | null;
   fireHeld: boolean;
@@ -130,6 +131,7 @@ export function RiseGame() {
   const snapshotRef = useRef<GameSnapshot | null>(null);
   const audioRef = useRef<GameAudioEngine | null>(null);
   const audioEnabledRef = useRef(true);
+  const viewportModeRef = useRef<"portrait" | "adaptive-wide">("portrait");
   const activeInputsRef = useRef<Record<InputLane, Set<string>>>(
     {
       left: new Set(),
@@ -148,7 +150,7 @@ export function RiseGame() {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [audioAvailable, setAudioAvailable] = useState(true);
   const [announcement, setAnnouncement] = useState(
-    "Cantica Zero pronta. Corri, salta e spezza il Rumore. Su touch e joypad puoi mirare i Versi a 360 gradi.",
+    "Cantica Zero pronta. Su desktop mira col mouse e tieni premuto il click; su touch usa lo stick dedicato.",
   );
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
@@ -169,12 +171,13 @@ export function RiseGame() {
     const right = active.right.size > 0;
     const touchAim = activeAimInputsRef.current.get("touch:aim")?.aim ?? null;
     const gamepadAim = activeAimInputsRef.current.get("gamepad:aim")?.aim ?? null;
+    const mouseAim = activeAimInputsRef.current.get("mouse:aim")?.aim ?? null;
     const fireHeld =
       active.fire.size > 0 ||
       Array.from(activeAimInputsRef.current.values()).some((input) => input.fireHeld);
     controllerRef.current?.setInput({
       moveX: left === right ? 0 : left ? -1 : 1,
-      aim: touchAim ?? gamepadAim,
+      aim: touchAim ?? gamepadAim ?? mouseAim,
       jumpHeld: active.jump.size > 0,
       fireHeld,
     });
@@ -211,7 +214,7 @@ export function RiseGame() {
   );
 
   const setAimInput = useCallback(
-    (source: "touch:aim" | "gamepad:aim", aim: AimVector | null, fireHeld: boolean) => {
+    (source: AimInputSource, aim: AimVector | null, fireHeld: boolean) => {
       const wasFireHeld = isFireHeld();
       if (aim === null && !fireHeld) {
         activeAimInputsRef.current.delete(source);
@@ -251,6 +254,12 @@ export function RiseGame() {
   });
 
   const isFullscreen = displayMode !== "inline";
+
+  useEffect(() => {
+    const viewportMode = isFullscreen ? "adaptive-wide" : "portrait";
+    viewportModeRef.current = viewportMode;
+    controllerRef.current?.setViewportMode(viewportMode);
+  }, [isFullscreen]);
 
   const resumeGame = useCallback(() => {
     controllerRef.current?.resume();
@@ -374,6 +383,7 @@ export function RiseGame() {
           controller.destroy();
           return;
         }
+        controller.setViewportMode(viewportModeRef.current);
         controllerRef.current = controller;
         if (process.env.NODE_ENV !== "production") {
           window.__CANTICA_ZERO_TEST__ = controller;
@@ -585,6 +595,61 @@ export function RiseGame() {
     [setAimInput],
   );
 
+  const resolveMouseAim = useCallback((clientX: number, clientY: number) => {
+    return controllerRef.current?.resolvePointerAim(clientX, clientY) ?? null;
+  }, []);
+
+  const releaseMouseFire = useCallback(() => {
+    const aim = activeAimInputsRef.current.get("mouse:aim")?.aim ?? null;
+    setAimInput("mouse:aim", aim, false);
+  }, [setAimInput]);
+
+  const bindMouseAim = {
+    onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+      if (event.pointerType !== "mouse") return;
+      const aim = resolveMouseAim(event.clientX, event.clientY);
+      if (!aim) return;
+      const wasFiring = activeAimInputsRef.current.get("mouse:aim")?.fireHeld ?? false;
+      setAimInput("mouse:aim", aim, wasFiring && (event.buttons & 1) === 1);
+    },
+    onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+      if (
+        event.pointerType !== "mouse" ||
+        event.button !== 0 ||
+        snapshotRef.current?.phase !== "playing"
+      ) {
+        return;
+      }
+      const aim = resolveMouseAim(event.clientX, event.clientY);
+      if (!aim) return;
+      event.preventDefault();
+      setAimInput("mouse:aim", aim, true);
+      stageRef.current?.focus({ preventScroll: true });
+    },
+    onPointerLeave(event: React.PointerEvent<HTMLDivElement>) {
+      if (event.pointerType === "mouse") releaseMouseFire();
+    },
+    onPointerCancel(event: React.PointerEvent<HTMLDivElement>) {
+      if (event.pointerType === "mouse") releaseMouseFire();
+    },
+  };
+
+  useEffect(() => {
+    const onPointerUp = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" && event.button === 0) releaseMouseFire();
+    };
+    const onPointerCancel = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") releaseMouseFire();
+    };
+
+    window.addEventListener("pointerup", onPointerUp, true);
+    window.addEventListener("pointercancel", onPointerCancel, true);
+    return () => {
+      window.removeEventListener("pointerup", onPointerUp, true);
+      window.removeEventListener("pointercancel", onPointerCancel, true);
+    };
+  }, [releaseMouseFire]);
+
   const bindPointer = (lane: InputLane) => ({
     onPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
       event.preventDefault();
@@ -635,7 +700,7 @@ export function RiseGame() {
         {announcement}
       </p>
 
-      <div className={styles.toolbar}>
+      <div className={styles.toolbar} data-testid="rise-game-toolbar">
         <button
           type="button"
           className={styles.toolButton}
@@ -713,7 +778,13 @@ export function RiseGame() {
         aria-label="Cantica Zero. Sali dal nono al primo cerchio."
         aria-describedby="cantica-controls"
       >
-        <div ref={canvasHostRef} className={styles.canvasHost} aria-hidden={runtimeState === "error"} />
+        <div
+          ref={canvasHostRef}
+          className={styles.canvasHost}
+          data-testid="rise-game-pointer-surface"
+          aria-hidden={runtimeState === "error"}
+          {...bindMouseAim}
+        />
 
         <header className={styles.chapter} aria-hidden="true">
           <span>ATTO {(snapshot?.actIndex ?? 0) + 1} · {circle.act}</span>
@@ -801,7 +872,7 @@ export function RiseGame() {
               <p className={styles.kicker}>CANTICA ZERO / IX → I</p>
               <h3>Dal fondo alle stelle.</h3>
               <p className={styles.overlayCopy}>
-                Corri, salta e mira i Versi a 360°. Tre vite, tre Atti, nove cerchi. Nessun tempo limite.
+                Corri, salta e mira a 360°: mouse e click su desktop, stick dedicato su touch. Tre vite, tre Atti, nove cerchi.
               </p>
               <button className={styles.primaryButton} type="button" onClick={startGame}>
                 Inizia la Cantica
@@ -868,15 +939,15 @@ export function RiseGame() {
         ) : null}
       </div>
 
-      <div className={styles.statusLine} aria-hidden="true">
+      <div className={styles.statusLine} data-testid="rise-game-status" aria-hidden="true">
         <span>{snapshot?.statusText ?? "La Cantica attende."}</span>
         <span>{snapshot?.recordEligible === false ? "FUORI RECORD" : `BEST ${formatTime(snapshot?.bestMs)}`}</span>
       </div>
 
-      <dl className={styles.instructions} id="cantica-controls">
+      <dl className={styles.instructions} id="cantica-controls" data-testid="rise-game-instructions">
         <div><dt>Muovi</dt><dd>A/D · ← →</dd></div>
         <div><dt>Salta</dt><dd>W · ↑ · Spazio</dd></div>
-        <div><dt>Verso</dt><dd>J/X · Stick R + R2/RB</dd></div>
+        <div><dt>Verso</dt><dd>Mouse mira · click spara · J/X · Stick R + R2/RB</dd></div>
         <div>
           <dt>Pausa</dt>
           <dd>{isFullscreen ? "P pausa · Esc esce e mette in pausa" : "P · Esc"}</dd>

@@ -9,6 +9,11 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
   getDifficultyTuning,
+  resolveAdaptiveHorizontalBounds,
+  resolveBackgroundTileTransform,
+  resolveRuntimeWorldGeometry,
+  type AdaptiveHorizontalRole,
+  type RuntimeWorldGeometry,
 } from "./config";
 import type { DifficultyEnemyKind } from "./difficulty";
 import {
@@ -23,6 +28,7 @@ import {
   INITIAL_JUMP_WINDOW_STATE,
   advanceMovingPlatform,
   isWithinVerticalViewport,
+  normalizeAimVector,
   recoverBreath,
   resolveJumpFrame,
   resolveVerseTrajectory,
@@ -32,6 +38,7 @@ import {
   type JumpWindowState,
 } from "./rules";
 import type {
+  AimVector,
   BossSnapshot,
   GameAudioCue,
   GamePhase,
@@ -69,6 +76,15 @@ type DynamicBodyObject = BodyGameObject & {
 type BossId = BossSnapshot["id"];
 type EnemyKind = DifficultyEnemyKind;
 type PickupKind = "voice" | "breath" | "rima" | "light";
+
+type AdaptiveStaticGeometry = Readonly<{
+  object: Phaser.GameObjects.Rectangle;
+  role: Exclude<AdaptiveHorizontalRole, "fixed">;
+  authoredLeft: number;
+  authoredRight: number;
+  height: number;
+  visualHeight: number | null;
+}>;
 
 const BOSS_NAMES: Record<BossId, string> = {
   minotaur: "Minotauro",
@@ -132,6 +148,35 @@ export function resolveAimFacingDirection(
   return resolveFacingDirection(velocityX, flipX);
 }
 
+type PointerAimOptions = Readonly<{
+  viewportX: number;
+  viewportY: number;
+  cameraScrollX: number;
+  cameraScrollY: number;
+  originX: number;
+  originY: number;
+}>;
+
+/** Converts a viewport point into a unit vector from Davide's Verse socket. */
+export function resolvePointerAimVector({
+  viewportX,
+  viewportY,
+  cameraScrollX,
+  cameraScrollY,
+  originX,
+  originY,
+}: PointerAimOptions): AimVector | null {
+  const values = [viewportX, viewportY, cameraScrollX, cameraScrollY, originX, originY];
+  if (values.some((value) => !Number.isFinite(value))) return null;
+  return normalizeAimVector(
+    {
+      x: cameraScrollX + viewportX - originX,
+      y: cameraScrollY + viewportY - originY,
+    },
+    0,
+  );
+}
+
 export function resolveVerseHitbox(angleDegrees: number, usesAtlas: boolean) {
   const radians = (angleDegrees * Math.PI) / 180;
   const rawCosine = Math.abs(Math.cos(radians));
@@ -175,6 +220,7 @@ export function resolveStablePlatformPosition({
   offsetY,
   playerWidth,
   worldWidth,
+  worldLeft = 0,
 }: Readonly<{
   platformX: number;
   platformY: number;
@@ -184,6 +230,7 @@ export function resolveStablePlatformPosition({
   offsetY: number;
   playerWidth: number;
   worldWidth: number;
+  worldLeft?: number;
 }>) {
   const safeInset = playerWidth / 2 + 2;
   const minimumX = platformLeft + safeInset;
@@ -193,7 +240,7 @@ export function resolveStablePlatformPosition({
       ? Math.max(minimumX, Math.min(maximumX, platformX + offsetX))
       : platformX;
   return {
-    x: Math.max(24, Math.min(worldWidth - 24, x)),
+    x: Math.max(worldLeft + 24, Math.min(worldLeft + worldWidth - 24, x)),
     y: platformY + offsetY,
   };
 }
@@ -315,8 +362,14 @@ export function createAscentScene(
     private loadedActs = new Set<number>();
     private loadingActs = new Set<number>();
     private backgroundLevelsDrawn = new Set<string>();
+    private backgroundTiles = new Set<Phaser.GameObjects.TileSprite>();
+    private backgroundWashes = new Set<Phaser.GameObjects.Rectangle>();
+    private adaptiveStaticGeometry = new Set<AdaptiveStaticGeometry>();
     private lastMovingPlatform: Phaser.GameObjects.GameObject | null = null;
     private assetLoadFailed = false;
+    private viewportWidth = GAME_WIDTH;
+    private viewportHeight = GAME_HEIGHT;
+    private worldGeometry: RuntimeWorldGeometry = resolveRuntimeWorldGeometry(GAME_WIDTH);
 
     constructor() {
       super({ key: "cantica-zero-ascent" });
@@ -368,8 +421,14 @@ export function createAscentScene(
       this.loadedActs.clear();
       this.loadingActs.clear();
       this.backgroundLevelsDrawn.clear();
+      this.backgroundTiles.clear();
+      this.backgroundWashes.clear();
+      this.adaptiveStaticGeometry.clear();
       this.lastMovingPlatform = null;
       this.assetLoadFailed = false;
+      this.viewportWidth = Math.max(GAME_WIDTH, bridge.viewportWidth);
+      this.viewportHeight = Math.max(1, bridge.viewportHeight);
+      this.worldGeometry = resolveRuntimeWorldGeometry(this.viewportWidth);
       this.playerVisual = null;
       this.enemyVisuals.clear();
       this.bossVisuals.clear();
@@ -414,8 +473,7 @@ export function createAscentScene(
         this.bossVisuals.clear();
         this.vfx = null;
       });
-      this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-      this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+      this.setViewportSize(bridge.viewportWidth, bridge.viewportHeight);
       this.cameras.main.setBackgroundColor(ACT_PALETTES[0].sky);
       this.cameras.main.roundPixels = true;
 
@@ -436,7 +494,7 @@ export function createAscentScene(
       this.lastStablePlatformOffset = null;
       this.createCollisions();
 
-      this.cameras.main.scrollY = Math.max(0, WORLD_HEIGHT - GAME_HEIGHT);
+      this.cameras.main.scrollY = Math.max(0, WORLD_HEIGHT - this.viewportHeight);
       this.physics.pause();
       bridge.scene = this;
 
@@ -570,6 +628,95 @@ export function createAscentScene(
     setReducedMotion(enabled: boolean) {
       bridge.reducedMotion = enabled;
       this.vfx?.setReducedMotion(enabled);
+    }
+
+    setViewportSize(width: number, height: number) {
+      this.viewportWidth = Math.max(GAME_WIDTH, Math.round(width));
+      this.viewportHeight = Math.max(1, Math.round(height));
+      this.worldGeometry = resolveRuntimeWorldGeometry(this.viewportWidth);
+      const currentScrollY = this.cameras.main.scrollY;
+      this.physics.world.setBounds(
+        this.worldGeometry.left,
+        0,
+        this.worldGeometry.width,
+        WORLD_HEIGHT,
+      );
+      this.cameras.main.setBounds(
+        this.worldGeometry.left,
+        0,
+        this.worldGeometry.width,
+        WORLD_HEIGHT,
+      );
+      this.cameras.main.scrollX = this.worldGeometry.left;
+      this.cameras.main.scrollY = PhaserRuntime.Math.Clamp(
+        currentScrollY,
+        0,
+        Math.max(0, WORLD_HEIGHT - this.viewportHeight),
+      );
+      this.adaptiveStaticGeometry.forEach((entry) => {
+        if (!entry.object.active) return;
+        const bounds = resolveAdaptiveHorizontalBounds({
+          role: entry.role,
+          authoredLeft: entry.authoredLeft,
+          authoredRight: entry.authoredRight,
+          geometry: this.worldGeometry,
+        });
+        entry.object
+          .setPosition(bounds.centerX, entry.object.y)
+          .setDisplaySize(bounds.width, entry.height);
+        const body = entry.object.body as Phaser.Physics.Arcade.StaticBody | undefined;
+        body?.updateFromGameObject();
+        const visual = entry.object.getData("visual") as Phaser.GameObjects.Image | undefined;
+        if (visual?.active && entry.visualHeight) {
+          visual
+            .setPosition(bounds.centerX, visual.y)
+            .setDisplaySize(bounds.width, entry.visualHeight);
+        }
+      });
+      this.backgroundTiles.forEach((tile) => {
+        tile.setPosition(WORLD_WIDTH / 2, tile.y);
+        tile.setSize(this.viewportWidth, LEVEL_HEIGHT);
+        const sourceWidth = tile.getData("sourceWidth") as number | undefined;
+        const sourceHeight = tile.getData("sourceHeight") as number | undefined;
+        const transform = resolveBackgroundTileTransform({
+          viewportWidth: this.viewportWidth,
+          textureWidth: sourceWidth ?? 0,
+          textureHeight: sourceHeight ?? 0,
+        });
+        tile
+          .setTileScale(transform.scaleX, transform.scaleY)
+          .setTilePosition(transform.positionX, transform.positionY);
+      });
+      this.backgroundWashes.forEach((wash) => {
+        wash.setPosition(WORLD_WIDTH / 2, wash.y);
+        wash.setDisplaySize(this.viewportWidth, LEVEL_HEIGHT);
+      });
+
+      if (this.player?.active && this.player.body) {
+        const inset = this.tuning.player.width / 2 + 2;
+        const nextX = PhaserRuntime.Math.Clamp(
+          this.player.x,
+          this.worldGeometry.left + inset,
+          this.worldGeometry.right - inset,
+        );
+        if (nextX !== this.player.x) {
+          this.player.setX(nextX);
+          (this.player.body as Phaser.Physics.Arcade.Body).updateFromGameObject();
+        }
+      }
+    }
+
+    resolvePointerAim(viewportX: number, viewportY: number) {
+      if (!this.player?.active) return null;
+      const origin = this.getPlayerVerseOrigin();
+      return resolvePointerAimVector({
+        viewportX,
+        viewportY,
+        cameraScrollX: this.cameras.main.scrollX,
+        cameraScrollY: this.cameras.main.scrollY,
+        originX: origin.x,
+        originY: origin.y,
+      });
     }
 
     verifyCampaign() {
@@ -770,9 +917,17 @@ export function createAscentScene(
       const offsetY = getLevelWorldOffsetY(level.orderFromBottom);
       const palette = ACT_PALETTES[level.actIndex];
       this.createLevelBackground(level, offsetY);
-      this.add
-        .rectangle(GAME_WIDTH / 2, offsetY + LEVEL_HEIGHT / 2, GAME_WIDTH, LEVEL_HEIGHT, palette.sky, 0.2)
+      const wash = this.add
+        .rectangle(
+          WORLD_WIDTH / 2,
+          offsetY + LEVEL_HEIGHT / 2,
+          this.viewportWidth,
+          LEVEL_HEIGHT,
+          palette.sky,
+          0.2,
+        )
         .setDepth(-18);
+      this.backgroundWashes.add(wash);
       this.add
         .text(18, offsetY + LEVEL_HEIGHT - 72, level.title.toUpperCase(), {
           fontFamily: "monospace",
@@ -796,14 +951,40 @@ export function createAscentScene(
           if (symbol === "#" || symbol === "-" || symbol === "C") {
             let run = 1;
             while (rowData[column + run] === symbol) run += 1;
+            const authoredLeft = column * TILE_SIZE;
+            const authoredRight = (column + run) * TILE_SIZE;
+            const touchesLeft = column === 0;
+            const touchesRight = column + run === rowData.length;
+            const isFloor = row === level.rows.length - 1;
+            const adaptiveRole: AdaptiveHorizontalRole =
+              symbol !== "#" || (!touchesLeft && !touchesRight)
+                ? "fixed"
+                : isFloor && touchesLeft && touchesRight
+                  ? "fill"
+                  : isFloor && touchesLeft
+                    ? "extend-left"
+                    : isFloor && touchesRight
+                      ? "extend-right"
+                      : touchesLeft
+                        ? "pin-left"
+                        : "pin-right";
+            const horizontalBounds = resolveAdaptiveHorizontalBounds({
+              role: adaptiveRole,
+              authoredLeft,
+              authoredRight,
+              geometry: this.worldGeometry,
+            });
             this.createPlatform(
-              x + ((run - 1) * TILE_SIZE) / 2,
+              horizontalBounds.centerX,
               y,
-              run * TILE_SIZE,
+              horizontalBounds.width,
               level.actIndex,
               symbol === "#" ? "static" : symbol === "-" ? "one-way" : "crumble",
               level,
               row,
+              adaptiveRole === "fixed"
+                ? undefined
+                : { role: adaptiveRole, authoredLeft, authoredRight },
             );
             column += run - 1;
             continue;
@@ -892,15 +1073,28 @@ export function createAscentScene(
         const key = `background-${actKey}-${layer}`;
         if (!this.textures.exists(key)) return;
         const tile = this.add.tileSprite(
-          GAME_WIDTH / 2,
+          WORLD_WIDTH / 2,
           offsetY + LEVEL_HEIGHT / 2,
-          GAME_WIDTH,
+          this.viewportWidth,
           LEVEL_HEIGHT,
           key,
         );
-        tile.setTileScale(0.5);
+        const source = this.textures.getFrame(key)?.source;
+        const sourceWidth = source?.width ?? GAME_WIDTH * 2;
+        const sourceHeight = source?.height ?? LEVEL_HEIGHT * 2;
+        const transform = resolveBackgroundTileTransform({
+          viewportWidth: this.viewportWidth,
+          textureWidth: sourceWidth,
+          textureHeight: sourceHeight,
+        });
+        tile
+          .setData("sourceWidth", sourceWidth)
+          .setData("sourceHeight", sourceHeight)
+          .setTileScale(transform.scaleX, transform.scaleY)
+          .setTilePosition(transform.positionX, transform.positionY);
         tile.setAlpha([0.48, 0.44, 0.32][layerIndex]);
         tile.setDepth(-30 + layerIndex * 3);
+        this.backgroundTiles.add(tile);
       });
     }
 
@@ -912,6 +1106,11 @@ export function createAscentScene(
       kind: "static" | "one-way" | "crumble",
       level: CircleLevelDefinition,
       row: number,
+      adaptive?: Readonly<{
+        role: Exclude<AdaptiveHorizontalRole, "fixed">;
+        authoredLeft: number;
+        authoredRight: number;
+      }>,
     ) {
       const falsePlatform =
         kind === "crumble" &&
@@ -932,13 +1131,25 @@ export function createAscentScene(
       platform.setStrokeStyle(2, palette.shadow, authoredVisual ? 0.4 : 1).setDepth(1);
       this.physics.add.existing(platform, true);
       platform.setData("kind", kind);
+      let visualHeight: number | null = null;
       if (authoredVisual) {
         const frame = actIndex * 8 + (kind === "crumble" ? 2 : kind === "one-way" ? 1 : 0);
+        visualHeight = Math.max(18, height + 12);
         const visual = this.add
           .image(x, y - (kind === "one-way" ? 1 : 3), "platform-v2", frame)
-          .setDisplaySize(width, Math.max(18, height + 12))
+          .setDisplaySize(width, visualHeight)
           .setDepth(2);
         platform.setData("visual", visual);
+      }
+      if (adaptive) {
+        this.adaptiveStaticGeometry.add({
+          object: platform,
+          role: adaptive.role,
+          authoredLeft: adaptive.authoredLeft,
+          authoredRight: adaptive.authoredRight,
+          height,
+          visualHeight,
+        });
       }
       if (falsePlatform) {
         platform.setAlpha(0.36).setData("falsePlatform", true);
@@ -1078,9 +1289,30 @@ export function createAscentScene(
       this.bosses.add(boss);
 
       const palette = ACT_PALETTES[actIndex];
-      const gate = this.add.rectangle(GAME_WIDTH / 2, levelOffsetY + 32, GAME_WIDTH, 14, palette.accent, 0.8);
+      const gateBounds = resolveAdaptiveHorizontalBounds({
+        role: "fill",
+        authoredLeft: 0,
+        authoredRight: GAME_WIDTH,
+        geometry: this.worldGeometry,
+      });
+      const gate = this.add.rectangle(
+        gateBounds.centerX,
+        levelOffsetY + 32,
+        gateBounds.width,
+        14,
+        palette.accent,
+        0.8,
+      );
       gate.setDepth(4).setData("bossId", id);
       this.physics.add.existing(gate, true);
+      this.adaptiveStaticGeometry.add({
+        object: gate,
+        role: "fill",
+        authoredLeft: 0,
+        authoredRight: GAME_WIDTH,
+        height: 14,
+        visualHeight: null,
+      });
       this.staticPlatforms.add(gate);
       this.bossGates.set(id, gate);
     }
@@ -1187,7 +1419,11 @@ export function createAscentScene(
       const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
       if (playerBody.velocity.y < 0 || playerBody.bottom > platform.body.top + 14) return;
       this.lastStableSpawn = new PhaserRuntime.Math.Vector2(
-        PhaserRuntime.Math.Clamp(this.player.x, 24, GAME_WIDTH - 24),
+        PhaserRuntime.Math.Clamp(
+          this.player.x,
+          this.worldGeometry.left + 24,
+          this.worldGeometry.right - 24,
+        ),
         this.player.y - 2,
       );
       this.lastStablePlatform = platform;
@@ -1213,7 +1449,8 @@ export function createAscentScene(
           offsetX: offset.x,
           offsetY: offset.y,
           playerWidth: this.tuning.player.width,
-          worldWidth: GAME_WIDTH,
+          worldWidth: this.worldGeometry.width,
+          worldLeft: this.worldGeometry.left,
         });
         return new PhaserRuntime.Math.Vector2(resolved.x, resolved.y);
       }
@@ -1435,7 +1672,7 @@ export function createAscentScene(
       this.lastMovingPlatform = null;
 
       this.updatePlayerAnimation(time, grounded);
-      if (this.player.y > this.cameras.main.scrollY + GAME_HEIGHT + 68) {
+      if (this.player.y > this.cameras.main.scrollY + this.viewportHeight + 68) {
         this.takeDamage("Caduta", true);
       }
     }
@@ -1496,7 +1733,6 @@ export function createAscentScene(
       this.lastShotAt = time;
       this.breath = breathAfterShot.breath;
       const body = this.player.body as Phaser.Physics.Arcade.Body;
-      const grounded = body.blocked.down || body.touching.down;
       const facingDirection = resolveFacingDirection(body.velocity.x, this.player.flipX);
       const trajectory = resolveVerseTrajectory({
         moveX: bridge.input.moveX,
@@ -1509,9 +1745,9 @@ export function createAscentScene(
       const angles = time < this.rimaUntil ? [baseAngle - 10, baseAngle, baseAngle + 10] : [baseAngle];
       const baseRadians = PhaserRuntime.Math.DegToRad(baseAngle);
       const socketRadius = 19;
-      const torsoY = this.player.y - (grounded ? 33 : 31);
-      const socketX = this.player.x + Math.cos(baseRadians) * socketRadius;
-      const socketY = torsoY + Math.sin(baseRadians) * socketRadius;
+      const origin = this.getPlayerVerseOrigin();
+      const socketX = origin.x + Math.cos(baseRadians) * socketRadius;
+      const socketY = origin.y + Math.sin(baseRadians) * socketRadius;
       this.lastShotSequence += 1;
       this.lastShotTelemetry = {
         sequence: this.lastShotSequence,
@@ -1549,6 +1785,15 @@ export function createAscentScene(
         );
       });
       this.emitAudio("verse");
+    }
+
+    private getPlayerVerseOrigin() {
+      const body = this.player.body as Phaser.Physics.Arcade.Body;
+      const grounded = body.blocked.down || body.touching.down;
+      return {
+        x: this.player.x,
+        y: this.player.y - (grounded ? 33 : 31),
+      } as const;
     }
 
     private updateEnemies(time: number) {
@@ -1672,7 +1917,7 @@ export function createAscentScene(
         isWithinVerticalViewport({
           actorY,
           scrollY: this.cameras.main.scrollY,
-          viewportHeight: GAME_HEIGHT,
+          viewportHeight: this.viewportHeight,
         }) && Math.abs(actorY - this.player.y) <= engagementDistance
       );
     }
@@ -1864,8 +2109,8 @@ export function createAscentScene(
           }
           if (
             time >= expiresAt ||
-            child.x < -32 ||
-            child.x > WORLD_WIDTH + 32 ||
+            child.x < this.worldGeometry.left - 32 ||
+            child.x > this.worldGeometry.right + 32 ||
             child.y < -32 ||
             child.y > WORLD_HEIGHT + 32
           ) {
@@ -1877,9 +2122,9 @@ export function createAscentScene(
 
     private updateCamera() {
       const desiredY = PhaserRuntime.Math.Clamp(
-        this.player.y - GAME_HEIGHT * 0.65,
+        this.player.y - this.viewportHeight * 0.65,
         0,
-        WORLD_HEIGHT - GAME_HEIGHT,
+        WORLD_HEIGHT - this.viewportHeight,
       );
       this.cameras.main.scrollY = Math.min(this.cameras.main.scrollY, desiredY);
     }
@@ -2102,12 +2347,17 @@ export function createAscentScene(
       this.clearProjectiles();
       const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
       playerBody.enable = true;
-      this.player.setPosition(spawn.x, spawn.y).setAlpha(1).clearTint();
+      const spawnX = PhaserRuntime.Math.Clamp(
+        spawn.x,
+        this.worldGeometry.left + 24,
+        this.worldGeometry.right - 24,
+      );
+      this.player.setPosition(spawnX, spawn.y).setAlpha(1).clearTint();
       this.landedUntil = -Infinity;
       this.playerVisual?.reset("respawn");
       this.vfx?.playAttached("player-respawn", this.player, { offsetY: 4 });
       this.emitAudio("respawn");
-      playerBody.reset(spawn.x, spawn.y);
+      playerBody.reset(spawnX, spawn.y);
       playerBody.setVelocity(0, 0);
       this.jumpWindowState = { ...INITIAL_JUMP_WINDOW_STATE, jumpCut: true };
       this.invulnerableUntil =
@@ -2118,7 +2368,11 @@ export function createAscentScene(
       bridge.input.jumpHeld = false;
       bridge.input.firePressed = false;
       bridge.input.fireHeld = false;
-      const cameraY = PhaserRuntime.Math.Clamp(spawn.y - GAME_HEIGHT * 0.65, 0, WORLD_HEIGHT - GAME_HEIGHT);
+      const cameraY = PhaserRuntime.Math.Clamp(
+        spawn.y - this.viewportHeight * 0.65,
+        0,
+        WORLD_HEIGHT - this.viewportHeight,
+      );
       this.cameras.main.scrollY = cameraY;
     }
 

@@ -1,16 +1,74 @@
 import type Phaser from "phaser";
 
-import { GAME_HEIGHT, GAME_WIDTH, PLAYER, WORLD_HEIGHT, WORLD_WIDTH } from "./config";
+import {
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  PLAYER,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+  resolveRuntimeViewportSize,
+} from "./config";
 import { createAscentScene } from "./ascent-scene";
 import type { RuntimeBridge } from "./internal";
 import { mergeGameInput } from "./rules";
 import {
   INITIAL_GAME_INPUT,
+  type AimVector,
   type CreateRiseGameOptions,
   type GameController,
+  type GameViewportMode,
 } from "./types";
 
 type PhaserNamespace = typeof Phaser;
+
+type PointerViewportPointOptions = Readonly<{
+  clientX: number;
+  clientY: number;
+  canvasLeft: number;
+  canvasTop: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}>;
+
+/** Maps a CSS-pixel pointer to the logical Phaser viewport without stretching aim. */
+export function resolvePointerViewportPoint({
+  clientX,
+  clientY,
+  canvasLeft,
+  canvasTop,
+  canvasWidth,
+  canvasHeight,
+  viewportWidth,
+  viewportHeight,
+}: PointerViewportPointOptions): Readonly<{ x: number; y: number }> | null {
+  const values = [
+    clientX,
+    clientY,
+    canvasLeft,
+    canvasTop,
+    canvasWidth,
+    canvasHeight,
+    viewportWidth,
+    viewportHeight,
+  ];
+  if (values.some((value) => !Number.isFinite(value))) return null;
+  if (canvasWidth <= 0 || canvasHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0) {
+    return null;
+  }
+
+  const relativeX = clientX - canvasLeft;
+  const relativeY = clientY - canvasTop;
+  if (relativeX < 0 || relativeX > canvasWidth || relativeY < 0 || relativeY > canvasHeight) {
+    return null;
+  }
+
+  return {
+    x: (relativeX / canvasWidth) * viewportWidth,
+    y: (relativeY / canvasHeight) * viewportHeight,
+  };
+}
 
 export async function createRiseGame(
   options: CreateRiseGameOptions,
@@ -28,6 +86,8 @@ export async function createRiseGame(
     input: { ...INITIAL_GAME_INPUT },
     assist: options.assist ?? false,
     reducedMotion: options.reducedMotion ?? false,
+    viewportWidth: GAME_WIDTH,
+    viewportHeight: GAME_HEIGHT,
     desiredRunning: false,
     pendingRestart: null,
     destroyed: false,
@@ -37,6 +97,8 @@ export async function createRiseGame(
   };
 
   const scene = createAscentScene(PhaserRuntime, bridge);
+  let destroyed = false;
+  let viewportMode: GameViewportMode = options.viewportMode ?? "portrait";
   const game = new PhaserRuntime.Game({
     type: PhaserRuntime.AUTO,
     parent: options.parent,
@@ -83,17 +145,62 @@ export async function createRiseGame(
       postBoot(bootedGame) {
         const canvas = bootedGame.canvas;
         canvas.dataset.testid = "rise-game-canvas";
+        canvas.dataset.viewportMode = viewportMode;
         canvas.setAttribute("aria-label", "Cantica Zero — area di gioco");
         canvas.setAttribute("role", "img");
       },
     },
   });
 
-  let destroyed = false;
+  const applyViewportSize = () => {
+    if (destroyed) return;
+    const bounds = options.parent.getBoundingClientRect();
+    const viewport = resolveRuntimeViewportSize({
+      mode: viewportMode,
+      parentWidth: bounds.width,
+      parentHeight: bounds.height,
+    });
+    game.canvas.dataset.viewportMode = viewportMode;
+    if (
+      bridge.viewportWidth === viewport.width &&
+      bridge.viewportHeight === viewport.height
+    ) {
+      bridge.scene?.setViewportSize(viewport.width, viewport.height);
+      return;
+    }
+    bridge.viewportWidth = viewport.width;
+    bridge.viewportHeight = viewport.height;
+    game.scale.setGameSize(viewport.width, viewport.height);
+    bridge.scene?.setViewportSize(viewport.width, viewport.height);
+  };
+
+  const parentResizeObserver =
+    typeof ResizeObserver === "function"
+      ? new ResizeObserver(() => applyViewportSize())
+      : null;
+  parentResizeObserver?.observe(options.parent);
+  if (!parentResizeObserver) window.addEventListener("resize", applyViewportSize);
+  applyViewportSize();
+
   return {
     setInput(input) {
       if (destroyed) return;
       bridge.input = mergeGameInput(bridge.input, input);
+    },
+    resolvePointerAim(clientX, clientY): AimVector | null {
+      if (destroyed || !bridge.scene) return null;
+      const bounds = game.canvas.getBoundingClientRect();
+      const point = resolvePointerViewportPoint({
+        clientX,
+        clientY,
+        canvasLeft: bounds.left,
+        canvasTop: bounds.top,
+        canvasWidth: bounds.width,
+        canvasHeight: bounds.height,
+        viewportWidth: bridge.viewportWidth,
+        viewportHeight: bridge.viewportHeight,
+      });
+      return point ? bridge.scene.resolvePointerAim(point.x, point.y) : null;
     },
     clearInput() {
       if (destroyed) return;
@@ -125,6 +232,11 @@ export async function createRiseGame(
       bridge.reducedMotion = enabled;
       bridge.scene?.setReducedMotion(enabled);
     },
+    setViewportMode(mode) {
+      if (destroyed) return;
+      viewportMode = mode;
+      applyViewportSize();
+    },
     verifyCampaign:
       process.env.NODE_ENV === "production"
         ? undefined
@@ -155,6 +267,8 @@ export async function createRiseGame(
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      parentResizeObserver?.disconnect();
+      if (!parentResizeObserver) window.removeEventListener("resize", applyViewportSize);
       bridge.destroyed = true;
       bridge.desiredRunning = false;
       bridge.scene = null;

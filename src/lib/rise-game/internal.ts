@@ -1,4 +1,5 @@
 import type {
+  AimVector,
   GameEvent,
   GameInput,
   GameSnapshot,
@@ -13,6 +14,8 @@ export interface AscentSceneHandle {
   restartGame(mode: SceneRestartMode): void;
   setAssist(enabled: boolean): void;
   setReducedMotion(enabled: boolean): void;
+  setViewportSize(width: number, height: number): void;
+  resolvePointerAim(viewportX: number, viewportY: number): AimVector | null;
   verifyCampaign(): GameSnapshot;
   verifyDamageRespawn(): Promise<GameSnapshot>;
   readTelemetry(): GameTelemetry;
@@ -22,6 +25,8 @@ export type RuntimeBridge = {
   input: GameInput;
   assist: boolean;
   reducedMotion: boolean;
+  viewportWidth: number;
+  viewportHeight: number;
   desiredRunning: boolean;
   pendingRestart: SceneRestartMode | null;
   destroyed: boolean;

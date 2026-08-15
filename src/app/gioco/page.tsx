@@ -120,9 +120,9 @@ export default function GamePage() {
                 <span>02</span>
                 <p>
                   <strong>Lancia Versi</strong>
-                  Su touch trascina lo stick destro per mirare e sparare a 360°.
-                  Con un joypad usa la levetta destra e R2 o RB. J e X restano
-                  disponibili sulla tastiera.
+                  Su desktop punta con il mouse e tieni premuto il click per
+                  mirare e sparare a 360°. J e X riusano l’ultima mira. Su touch
+                  trascina lo stick destro; il joypad resta opzionale.
                 </p>
               </li>
               <li>
