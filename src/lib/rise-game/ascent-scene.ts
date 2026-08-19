@@ -526,6 +526,7 @@ export function createAscentScene(
       const gameTime = this.elapsedMs
       this.updatePlayer(gameTime, safeDelta)
       this.updateMovingPlatforms(safeDelta)
+      this.updateCrumblePlatforms()
       this.updateEnemies(gameTime)
       this.updateBosses(gameTime)
       this.updateProjectiles(gameTime)
@@ -1153,6 +1154,13 @@ export function createAscentScene(
         row,
         levelOrderFromBottom: level.orderFromBottom,
       })
+      if (kind === 'crumble') {
+        platform.setData('crumbleArmedAt', null)
+        platform.setData('crumbleCollapseAt', null)
+        platform.setData('crumbleRestoresAt', null)
+        platform.setData('armed', false)
+        platform.setData('regenerationBar', this.add.graphics().setDepth(4).setVisible(false))
+      }
       let visualHeight: number | null = null
       if (authoredVisual) {
         const frame = actIndex * 8 + (kind === 'crumble' ? 2 : kind === 'one-way' ? 1 : 0)
@@ -1524,7 +1532,11 @@ export function createAscentScene(
     private armCrumblePlatform(platform: BodyObject) {
       if (platform.getData('armed')) return
       const platformTuning = this.tuning.platforms
+      const now = this.elapsedMs
       platform.setData('armed', true)
+      platform.setData('crumbleArmedAt', now)
+      platform.setData('crumbleCollapseAt', now + platformTuning.crumbleDelayMs)
+      platform.setData('crumbleRestoresAt', now + platformTuning.crumbleDelayMs + platformTuning.crumbleRestoreMs)
       this.time.delayedCall(platformTuning.crumbleDelayMs, () => {
         if (!platform.active) return
         platform.setVisible(false)
@@ -1537,8 +1549,63 @@ export function createAscentScene(
           visual?.setVisible(true)
           platform.body.enable = true
           platform.setData('armed', false)
+          platform.setData('crumbleArmedAt', null)
+          platform.setData('crumbleCollapseAt', null)
+          platform.setData('crumbleRestoresAt', null)
         })
       })
+    }
+
+    private updateCrumblePlatforms() {
+      this.crumblePlatforms.getChildren().forEach((child) => {
+        if (!isBodyObject(child)) return
+        this.updateCrumblePlatformBar(child)
+      })
+    }
+
+    private updateCrumblePlatformBar(platform: BodyObject) {
+      const bar = platform.getData('regenerationBar') as Phaser.GameObjects.Graphics | undefined
+      if (!bar) return
+
+      const armed = Boolean(platform.getData('armed'))
+      const armedAt = platform.getData('crumbleArmedAt') as number | null
+      const collapseAt = platform.getData('crumbleCollapseAt') as number | null
+      const restoreAt = platform.getData('crumbleRestoresAt') as number | null
+
+      if (
+        !armed ||
+        typeof armedAt !== 'number' ||
+        typeof collapseAt !== 'number' ||
+        typeof restoreAt !== 'number'
+      ) {
+        bar.clear().setVisible(false)
+        return
+      }
+
+      const elapsed = this.elapsedMs - armedAt
+      const cycleMs = restoreAt - armedAt
+      if (elapsed <= 0 || elapsed >= cycleMs) {
+        bar.clear().setVisible(false)
+        return
+      }
+
+      const delayMs = collapseAt - armedAt
+      const restoreMs = restoreAt - collapseAt
+      const width = Math.max(22, platform.width * 0.76)
+      const height = 4
+      const x = platform.x - width / 2
+      const y = platform.y - (platform.displayHeight + 8)
+      const fill = elapsed <= delayMs ? 1 - elapsed / delayMs : Math.min(1, (elapsed - delayMs) / restoreMs)
+      const fillColor = elapsed <= delayMs ? 0xffcf5e : 0x39f4ff
+
+      bar.setVisible(true)
+      bar.clear()
+      bar.fillStyle(0x0e1a2d, 0.9)
+      bar.fillRect(x, y, width, height)
+      bar.lineStyle(1, 0x7ca9c6, 0.7)
+      bar.strokeRect(x, y, width, height)
+      bar.fillStyle(fillColor, 1)
+      bar.fillRect(x + 1, y + 1, Math.max(0, (width - 2) * fill), height - 2)
     }
 
     private updateMovingPlatforms(delta: number) {
@@ -1625,8 +1692,12 @@ export function createAscentScene(
         body.velocity.x,
         this.player.flipX,
       )
-      if (bridge.input.aim || bridge.input.moveX !== 0) {
-        this.player.setFlipX(moveFacing !== null ? moveFacing < 0 : aimFacing < 0)
+      if (moveFacing !== null) {
+        this.player.setFlipX(moveFacing < 0)
+      } else if (bridge.input.aim) {
+        this.player.setFlipX(aimFacing < 0)
+      } else if (Math.abs(body.velocity.x) > 8) {
+        this.player.setFlipX(body.velocity.x < 0)
       }
       this.updateAimReticle(bridge.input.aim)
 
@@ -1719,8 +1790,10 @@ export function createAscentScene(
 
     private updatePlayerAnimation(time: number, grounded: boolean) {
       if (!this.authoredPlayer || !this.playerVisual) return
+      const fireVisualWindowMs = Math.max(150, this.tuning.combat.fireIntervalMs - 20)
+      const RUN_VELOCITY_THRESHOLD = 24
       const body = this.player.body as Phaser.Physics.Arcade.Body
-      const firing = time - this.lastShotAt < 150
+      const firing = time - this.lastShotAt < fireVisualWindowMs
       let state: PlayerVisualState = 'idle'
       if (this.phase === 'dying' && time + 280 >= this.hitUntil) state = 'defeat'
       else if (time < this.hitUntil) state = 'hit'
@@ -1732,7 +1805,7 @@ export function createAscentScene(
             ? 'fire-up-ground'
             : 'fire-up-air'
       } else if (!grounded) state = body.velocity.y < 0 ? 'jump' : 'fall'
-      else if (Math.abs(body.velocity.x) > 8) state = 'run'
+      else if (Math.abs(body.velocity.x) > RUN_VELOCITY_THRESHOLD) state = 'run'
       this.playerVisual.play(state)
     }
 
