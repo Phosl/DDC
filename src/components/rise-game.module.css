@@ -70,6 +70,39 @@
   opacity: 0.35;
 }
 
+.nicknameControl {
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  min-height: 2.55rem;
+  padding-inline: 0.48rem;
+  border: 1px solid var(--game-line);
+  background: var(--game-black);
+}
+
+.nicknameControl span {
+  color: var(--game-muted);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+}
+
+.nicknameInput {
+  width: 8.6rem;
+  min-height: 1.2rem;
+  padding: 0.22rem 0.35rem;
+  border: 1px solid var(--game-muted);
+  background: rgba(8, 8, 8, 0.8);
+  color: var(--game-ink);
+  font: inherit;
+  font-size: 0.58rem;
+  letter-spacing: 0.03em;
+}
+
+.nicknameInput:focus-visible {
+  outline: 2px solid var(--game-cyan);
+  outline-offset: 2px;
+}
+
 .toolButton:not(:disabled):hover,
 .toolButton:not(:disabled):focus-visible {
   border-color: var(--game-ink);
@@ -301,21 +334,16 @@
 }
 
 .touchControls {
-  position: absolute;
   z-index: 4;
-  right: max(0.62rem, env(safe-area-inset-right));
-  bottom: max(0.7rem, calc(env(safe-area-inset-bottom) + 0.2rem));
-  left: max(0.62rem, env(safe-area-inset-left));
   display: none;
-  align-items: end;
-  justify-content: space-between;
-  pointer-events: none;
+  width: 100%;
+  margin-top: 0.9rem;
 }
 
 .movePad,
 .actionPad {
-  display: flex;
-  align-items: end;
+  display: grid;
+  justify-items: center;
   gap: 0.38rem;
 }
 
@@ -333,14 +361,11 @@
   pointer-events: auto;
 }
 
-.movePad button {
-  font-size: 1.2rem;
-}
-
 .jumpButton {
   min-width: 3.8rem;
   border-color: var(--game-acid);
   color: var(--game-acid);
+  font-size: 0.52rem;
 }
 
 .aimJoystick {
@@ -359,6 +384,82 @@
     rgba(8, 8, 8, 0.78) !important;
   color: var(--game-cyan);
   isolation: isolate;
+}
+
+.moveJoystick {
+  --move-x: 0;
+  --move-y: 0;
+  position: relative;
+  width: 5.35rem;
+  min-width: 5.35rem !important;
+  height: 5.35rem;
+  min-height: 5.35rem !important;
+  overflow: hidden;
+  border-color: var(--game-magenta) !important;
+  border-radius: 50% !important;
+  background:
+    radial-gradient(circle, rgba(255, 42, 120, 0.13) 0 7%, transparent 8%),
+    rgba(8, 8, 8, 0.78) !important;
+  color: var(--game-magenta);
+  isolation: isolate;
+}
+
+.moveJoystick::before,
+.moveJoystick::after {
+  position: absolute;
+  z-index: 0;
+  content: "";
+  background: rgba(255, 42, 120, 0.24);
+  pointer-events: none;
+}
+
+.moveJoystick::before {
+  top: 50%;
+  right: 0.52rem;
+  left: 0.52rem;
+  height: 1px;
+}
+
+.moveJoystick::after {
+  top: 0.52rem;
+  bottom: 0.52rem;
+  left: 50%;
+  width: 1px;
+}
+
+.moveJoystick > span {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: 0.68rem;
+  left: 0;
+  color: rgba(255, 42, 120, 0.84);
+  font-size: 0.42rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.moveJoystick > i {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--game-black);
+  border-radius: 50%;
+  background: var(--game-magenta);
+  box-shadow: 0 0 0 2px rgba(255, 42, 120, 0.34);
+  transform: translate(
+    calc(-50% + var(--move-x) * 1.58rem),
+    calc(-50% + var(--move-y) * 1.58rem)
+  );
+  pointer-events: none;
+}
+
+.moveJoystick[data-active="true"] {
+  box-shadow: 0 0 0 3px rgba(255, 42, 120, 0.18);
 }
 
 .aimJoystick::before,
@@ -613,9 +714,39 @@
   color: var(--game-acid);
 }
 
+.leaderboard {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.leaderboardTitle {
+  margin: 0 0 0.45rem;
+  color: var(--game-acid);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+}
+
+.leaderboardList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.leaderboardList li {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr auto;
+  gap: 0.4rem;
+  margin-bottom: 0.18rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  color: rgba(244, 240, 232, 0.82);
+}
+
 .instructions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(5.25rem, 1fr));
   gap: 0;
   margin: 0;
   padding-top: 0.75rem;
@@ -668,7 +799,10 @@
 
 @media (hover: none), (pointer: coarse), (max-width: 48rem) {
   .touchControls {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 0.7rem;
   }
 
   .instructions {
@@ -711,11 +845,26 @@
     min-height: 3.15rem;
   }
 
+  .moveJoystick,
   .aimJoystick {
     width: 4.85rem;
     min-width: 4.85rem !important;
     height: 4.85rem;
     min-height: 4.85rem !important;
+  }
+
+  .moveJoystick > i {
+    transform: translate(
+      calc(-50% + var(--move-x) * 1.05rem),
+      calc(-50% + var(--move-y) * 1.05rem)
+    );
+  }
+
+  .aimJoystick > i {
+    transform: translate(
+      calc(-50% + var(--aim-x) * 1.05rem),
+      calc(-50% + var(--aim-y) * 1.05rem)
+    );
   }
 
   .chapter {
@@ -746,9 +895,11 @@
   }
 
   .touchControls {
-    right: max(0.28rem, env(safe-area-inset-right));
-    bottom: max(0.28rem, env(safe-area-inset-bottom));
-    left: max(0.28rem, env(safe-area-inset-left));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 0.45rem;
+    margin-top: 0.55rem;
   }
 
   .touchControls button {
@@ -758,15 +909,7 @@
     font-size: 0.46rem;
   }
 
-  .movePad,
-  .actionPad {
-    gap: 0.2rem;
-  }
-
-  .jumpButton {
-    min-width: 3.15rem;
-  }
-
+  .moveJoystick,
   .aimJoystick {
     width: 3.85rem;
     min-width: 3.85rem !important;
@@ -774,11 +917,22 @@
     min-height: 3.85rem !important;
   }
 
+  .moveJoystick > i {
+    transform: translate(
+      calc(-50% + var(--move-x) * 1.05rem),
+      calc(-50% + var(--move-y) * 1.05rem)
+    );
+  }
+
   .aimJoystick > i {
     transform: translate(
       calc(-50% + var(--aim-x) * 1.05rem),
       calc(-50% + var(--aim-y) * 1.05rem)
     );
+  }
+
+  .jumpButton {
+    min-width: 3.15rem;
   }
 }
 

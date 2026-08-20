@@ -102,6 +102,15 @@ describe("ascent timed attack guards", () => {
     expect(source.height).toBe(32);
   });
 
+  it("keeps source-space hitbox geometry stable when touch actors are doubled", () => {
+    const standard = resolveSourceHitbox(22, 32, 0.75, 1);
+    const touch = resolveSourceHitbox(44, 64, 1.5, 2);
+
+    expect(touch).toEqual(standard);
+    expect(touch.width * 1.5).toBeCloseTo(44);
+    expect(touch.height * 2).toBeCloseTo(64);
+  });
+
   it("anchors an assisted respawn to the platform current position", () => {
     const first = resolveStablePlatformPosition({
       platformX: 120,

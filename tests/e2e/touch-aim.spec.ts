@@ -15,18 +15,22 @@ test("moves, jumps and aims with three simultaneous touch pointers", async ({ pa
   await expect.poll(async () => (await readTelemetry(page)).player.grounded).toBe(true);
 
   const start = await readTelemetry(page);
-  const right = page.getByRole("button", { name: "Destra", exact: true });
+  const move = page.getByTestId("move-joystick");
   const jump = page.getByRole("button", { name: "Salta", exact: true });
   const aim = page.getByTestId("aim-joystick");
+  const moveBox = await move.boundingBox();
   const aimBox = await aim.boundingBox();
+  expect(moveBox).not.toBeNull();
   expect(aimBox).not.toBeNull();
-  if (!aimBox) return;
+  if (!moveBox || !aimBox) return;
 
-  await right.dispatchEvent("pointerdown", {
+  await move.dispatchEvent("pointerdown", {
     pointerId: 1,
     pointerType: "touch",
     isPrimary: true,
     buttons: 1,
+    clientX: moveBox.x + moveBox.width * 0.9,
+    clientY: moveBox.y + moveBox.height * 0.5,
   });
   await jump.dispatchEvent("pointerdown", {
     pointerId: 2,
@@ -61,13 +65,17 @@ test("moves, jumps and aims with three simultaneous touch pointers", async ({ pa
     isPrimary: false,
     buttons: 0,
   });
-  await right.dispatchEvent("pointerup", {
+  await move.dispatchEvent("pointerup", {
     pointerId: 1,
     pointerType: "touch",
     isPrimary: true,
     buttons: 0,
+    clientX: moveBox.x + moveBox.width * 0.9,
+    clientY: moveBox.y + moveBox.height * 0.5,
   });
 
+  await expect(move).toHaveAttribute("data-active", "false");
+  await expect.poll(async () => Math.abs((await readTelemetry(page)).player.velocityX)).toBeLessThan(1);
   await expect.poll(async () => (await readTelemetry(page)).aim).toBeNull();
   await page.waitForTimeout(220);
   const releasedSequence = (await readTelemetry(page)).lastShot?.sequence ?? 0;

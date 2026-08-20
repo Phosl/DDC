@@ -64,6 +64,10 @@ import {
   preloadCanticaVfxAtlas,
   type CanticaVfxSystem,
 } from './visuals/vfx-system'
+import {
+  createGodModeVisualController,
+  type GodModeVisualController,
+} from './visuals/god-mode-visuals'
 
 type PhaserNamespace = typeof Phaser
 type BodyGameObject = Phaser.GameObjects.Rectangle | Phaser.Physics.Arcade.Sprite
@@ -319,8 +323,10 @@ export function createAscentScene(
     private bestMs: number | null = null
     private activeBoss: Phaser.Physics.Arcade.Sprite | null = null
     private phaseBeforePause: GamePhase = 'playing'
+    private debugFlyEnabled = false
     private player!: Phaser.Physics.Arcade.Sprite
     private aimReticle: Phaser.GameObjects.Arc | null = null
+    private godModeVisual: GodModeVisualController | null = null
     private authoredPlayer = false
     private playerVisual: ActorVisualController<PlayerVisualState> | null = null
     private enemyVisuals = new Map<Phaser.Physics.Arcade.Sprite, EnemyVisualController>()
@@ -354,6 +360,7 @@ export function createAscentScene(
     private spiralForeground = new Set<Phaser.GameObjects.Rectangle>()
     private adaptiveStaticGeometry = new Set<AdaptiveStaticGeometry>()
     private lastMovingPlatform: Phaser.GameObjects.GameObject | null = null
+    private playerFacingDirection: -1 | 1 = 1
     private assetLoadFailed = false
     private viewportWidth = GAME_WIDTH
     private viewportHeight = GAME_HEIGHT
@@ -375,6 +382,7 @@ export function createAscentScene(
       this.elapsedMs = 0
       this.lives = 3
       this.breath = this.tuning.combat.maxBreath
+      this.playerFacingDirection = 1
       this.voices = 0
       this.strofe = 0
       this.recordEligible = true
@@ -398,6 +406,9 @@ export function createAscentScene(
       this.announcedCircleIndex = -1
       this.statusText = 'Preparati alla salita'
       this.bestMs = readBestTime(this.assistedRun)
+      this.debugFlyEnabled = process.env.NODE_ENV !== 'production' && bridge.input.devFly
+      if (this.debugFlyEnabled) this.recordEligible = false
+      this.godModeVisual = null
       this.activeBoss = null
       this.phaseBeforePause = 'playing'
       this.aimReticle = null
@@ -452,11 +463,13 @@ export function createAscentScene(
         reducedMotion: bridge.reducedMotion,
       })
       this.events.once(PhaserRuntime.Scenes.Events.SHUTDOWN, () => {
+        this.godModeVisual?.destroy()
         this.playerVisual?.destroy()
         this.enemyVisuals.forEach((visual) => visual.destroy())
         this.bossVisuals.forEach((visual) => visual.destroy())
         this.vfx?.destroy()
         this.aimReticle = null
+        this.godModeVisual = null
         this.playerVisual = null
         this.enemyVisuals.clear()
         this.bossVisuals.clear()
@@ -473,6 +486,18 @@ export function createAscentScene(
         this.checkpointSpawns.get(0) ??
         new PhaserRuntime.Math.Vector2(GAME_WIDTH / 2, WORLD_HEIGHT - 80)
       this.createPlayer(initialSpawn.x, initialSpawn.y)
+      if (process.env.NODE_ENV !== 'production') {
+        this.godModeVisual = createGodModeVisualController({
+          scene: this,
+          runtime: PhaserRuntime,
+          player: this.player,
+          vfx: this.vfx,
+          viewportWidth: this.viewportWidth,
+          viewportHeight: this.viewportHeight,
+          getReducedMotion: () => bridge.reducedMotion,
+        })
+        this.godModeVisual.setActive(this.debugFlyEnabled && bridge.input.devFly, this.elapsedMs)
+      }
       this.aimReticle = this.add
         .circle(initialSpawn.x, initialSpawn.y - 52, 5, 0x39f4ff, 0)
         .setStrokeStyle(2, 0x39f4ff, 0.9)
@@ -525,6 +550,8 @@ export function createAscentScene(
       this.elapsedMs += safeDelta
       const gameTime = this.elapsedMs
       this.updatePlayer(gameTime, safeDelta)
+      this.godModeVisual?.setActive(this.debugFlyEnabled && bridge.input.devFly, gameTime)
+      this.godModeVisual?.update(gameTime)
       this.updateMovingPlatforms(safeDelta)
       this.updateCrumblePlatforms()
       this.updateEnemies(gameTime)
@@ -577,6 +604,7 @@ export function createAscentScene(
       this.lives = 3
       this.phase = 'playing'
       this.statusText = 'La salita continua — fuori classifica'
+      this.resetAllCrumblePlatforms()
       bridge.desiredRunning = true
       this.physics.resume()
       this.respawnAtActCheckpoint()
@@ -612,6 +640,27 @@ export function createAscentScene(
         )
       })
       this.bestMs = readBestTime(this.assistedRun)
+      this.emitSnapshot(true)
+    }
+
+    setDebugFly(enabled: boolean) {
+      this.debugFlyEnabled = process.env.NODE_ENV !== 'production' && enabled
+      if (this.debugFlyEnabled) this.recordEligible = false
+      if (!this.debugFlyEnabled) {
+        if (this.player?.active) {
+          const playerTuning = this.tuning.player
+          const body = this.player.body as Phaser.Physics.Arcade.Body
+          body.setGravityY(
+            playerTuning.gravity - getDifficultyTuning(false).player.gravity,
+          )
+        }
+      } else {
+        if (this.player?.active) {
+          const body = this.player.body as Phaser.Physics.Arcade.Body
+          body.setGravityY(0)
+        }
+      }
+      this.godModeVisual?.setActive(this.debugFlyEnabled && bridge.input.devFly, this.elapsedMs)
       this.emitSnapshot(true)
     }
 
@@ -681,6 +730,7 @@ export function createAscentScene(
         wash.setPosition(WORLD_WIDTH / 2, wash.y)
         wash.setDisplaySize(this.viewportWidth, LEVEL_HEIGHT)
       })
+      this.godModeVisual?.resize(this.viewportWidth, this.viewportHeight)
 
       if (this.player?.active && this.player.body) {
         const inset = this.tuning.player.width / 2 + 2
@@ -867,6 +917,23 @@ export function createAscentScene(
       makeTexture('noise-projectile', 9, 9, (graphics) => {
         graphics.fillStyle(0xff664f).fillRect(0, 2, 9, 5)
         graphics.fillStyle(0xffd166).fillRect(2, 0, 5, 9)
+      })
+      makeTexture('god-mode-noise', 72, 72, (graphics) => {
+        graphics.fillStyle(0xffffff, 0).fillRect(0, 0, 72, 72)
+        for (let y = 0; y < 72; y += 1) {
+          for (let x = 0; x < 72; x += 1) {
+            if (Math.random() > 0.96) {
+              graphics.fillStyle(0x9fffff, 0.12 + Math.random() * 0.08)
+              graphics.fillRect(x, y, 1, 1)
+            }
+          }
+        }
+      })
+      makeTexture('god-mode-scanline', 4, 4, (graphics) => {
+        graphics.fillStyle(0xffffff, 0)
+        graphics.fillRect(0, 0, 4, 4)
+        graphics.fillStyle(0xb8f7ff, 0.2)
+        graphics.fillRect(0, 0, 4, 1)
       })
       makeTexture('enemy', 28, 32, (graphics) => {
         graphics.fillStyle(0x151015).fillRect(3, 6, 22, 24)
@@ -1149,6 +1216,10 @@ export function createAscentScene(
       const platform = this.add.rectangle(x, y, width, height, color, fillAlpha)
       platform.setStrokeStyle(2, strokeColor, strokeAlpha).setDepth(1)
       this.physics.add.existing(platform, true)
+      if (!isBodyObject(platform)) {
+        platform.destroy()
+        return
+      }
       platform.setData({
         kind,
         row,
@@ -1160,12 +1231,14 @@ export function createAscentScene(
         platform.setData('crumbleRestoresAt', null)
         platform.setData('armed', false)
         platform.setData('regenerationBar', this.add.graphics().setDepth(4).setVisible(false))
+        this.resetCrumblePlatform(platform)
       }
+      let visual: Phaser.GameObjects.Image | undefined
       let visualHeight: number | null = null
       if (authoredVisual) {
         const frame = actIndex * 8 + (kind === 'crumble' ? 2 : kind === 'one-way' ? 1 : 0)
         visualHeight = Math.max(isOneWay ? 24 : 18, height + (isOneWay ? 14 : 12))
-        const visual = this.add
+        visual = this.add
           .image(x, y - (isOneWay ? 2 : 3), 'platform-v2', frame)
           .setDisplaySize(width, visualHeight)
           .setDepth(2)
@@ -1183,8 +1256,8 @@ export function createAscentScene(
       }
       if (falsePlatform) {
         platform.setAlpha(0.36).setData('falsePlatform', true)
-        const falseBody = platform.body as Phaser.Physics.Arcade.StaticBody
-        falseBody.enable = false
+        visual?.setAlpha(0.72)
+        this.crumblePlatforms.add(platform)
       } else if (kind === 'one-way') this.oneWayPlatforms.add(platform)
       else if (kind === 'crumble') this.crumblePlatforms.add(platform)
       else this.staticPlatforms.add(platform)
@@ -1360,17 +1433,21 @@ export function createAscentScene(
         )
         body.setSize(sourceHitbox.width, sourceHitbox.height, true)
         body.setOffset(
-          PLAYER_VISUAL.pivot.x * this.actorScale - sourceHitbox.width / 2,
-          PLAYER_VISUAL.pivot.y * this.actorScale - sourceHitbox.height,
+          PLAYER_VISUAL.pivot.x - sourceHitbox.width / 2,
+          PLAYER_VISUAL.pivot.y - sourceHitbox.height,
         )
       } else {
-        this.player.setOrigin(0.5, 0.90625)
-        body.setSize(
+        this.player
+          .setDisplaySize(48 * this.actorScale, 64 * this.actorScale)
+          .setOrigin(0.5, 0.90625)
+        const sourceHitbox = resolveSourceHitbox(
           playerTuning.width * this.actorScale,
           playerTuning.height * this.actorScale,
-          true,
+          this.player.scaleX,
+          this.player.scaleY,
         )
-        body.setOffset(13 * this.actorScale, 26 * this.actorScale)
+        body.setSize(sourceHitbox.width, sourceHitbox.height, true)
+        body.setOffset(13, 26)
       }
       body.setMaxVelocity(playerTuning.speed, playerTuning.maxFallVelocity)
     }
@@ -1426,6 +1503,17 @@ export function createAscentScene(
         }
         if (isBodyObject(boss)) this.damageBoss(boss)
       })
+      this.physics.add.collider(
+        this.playerProjectiles,
+        this.crumblePlatforms,
+        (projectile, platform) => {
+          if (isBodyObject(platform)) this.armCrumblePlatform(platform)
+          if (isBodyObject(projectile)) {
+            this.vfx?.playWorld('verse-impact', projectile.x, projectile.y, {scale: 0.82})
+            projectile.destroy()
+          }
+        },
+      )
       ;[
         this.staticPlatforms,
         this.oneWayPlatforms,
@@ -1537,36 +1625,39 @@ export function createAscentScene(
       platform.setData('crumbleArmedAt', now)
       platform.setData('crumbleCollapseAt', now + platformTuning.crumbleDelayMs)
       platform.setData('crumbleRestoresAt', now + platformTuning.crumbleDelayMs + platformTuning.crumbleRestoreMs)
-      this.time.delayedCall(platformTuning.crumbleDelayMs, () => {
-        if (!platform.active) return
-        platform.setVisible(false)
-        const visual = platform.getData('visual') as Phaser.GameObjects.Image | undefined
-        visual?.setVisible(false)
-        platform.body.enable = false
-        this.time.delayedCall(platformTuning.crumbleRestoreMs, () => {
-          if (!platform.active) return
-          platform.setVisible(true)
-          visual?.setVisible(true)
-          platform.body.enable = true
-          platform.setData('armed', false)
-          platform.setData('crumbleArmedAt', null)
-          platform.setData('crumbleCollapseAt', null)
-          platform.setData('crumbleRestoresAt', null)
-        })
-      })
     }
 
     private updateCrumblePlatforms() {
+      const gameTime = this.elapsedMs
       this.crumblePlatforms.getChildren().forEach((child) => {
         if (!isBodyObject(child)) return
-        this.updateCrumblePlatformBar(child)
+        this.updateCrumblePlatformBar(child, gameTime)
       })
     }
 
-    private updateCrumblePlatformBar(platform: BodyObject) {
-      const bar = platform.getData('regenerationBar') as Phaser.GameObjects.Graphics | undefined
-      if (!bar) return
+    private resetAllCrumblePlatforms() {
+      this.crumblePlatforms.getChildren().forEach((child) => {
+        if (!isBodyObject(child)) return
+        this.resetCrumblePlatform(child)
+      })
+    }
 
+    private resetCrumblePlatform(platform: BodyObject) {
+      platform.setVisible(true)
+      const visual = platform.getData('visual') as Phaser.GameObjects.Image | undefined
+      visual?.setVisible(true)
+      platform.body.enable = true
+      platform.setData('armed', false)
+      platform.setData('crumbleArmedAt', null)
+      platform.setData('crumbleCollapseAt', null)
+      platform.setData('crumbleRestoresAt', null)
+      const bar = platform.getData('regenerationBar') as Phaser.GameObjects.Graphics | undefined
+      if (bar?.active) bar.clear().setVisible(false)
+    }
+
+    private updateCrumblePlatformBar(platform: BodyObject, gameTime: number) {
+      const bar = platform.getData('regenerationBar') as Phaser.GameObjects.Graphics | undefined
+      const visual = platform.getData('visual') as Phaser.GameObjects.Image | undefined
       const armed = Boolean(platform.getData('armed'))
       const armedAt = platform.getData('crumbleArmedAt') as number | null
       const collapseAt = platform.getData('crumbleCollapseAt') as number | null
@@ -1578,16 +1669,40 @@ export function createAscentScene(
         typeof collapseAt !== 'number' ||
         typeof restoreAt !== 'number'
       ) {
-        bar.clear().setVisible(false)
+        if (!platform.visible || !platform.body.enable) {
+          this.resetCrumblePlatform(platform)
+          return
+        }
+        if (bar?.active) bar.clear().setVisible(false)
         return
       }
 
-      const elapsed = this.elapsedMs - armedAt
-      const cycleMs = restoreAt - armedAt
-      if (elapsed <= 0 || elapsed >= cycleMs) {
-        bar.clear().setVisible(false)
+      if (gameTime >= restoreAt) {
+        this.resetCrumblePlatform(platform)
         return
       }
+
+      const isCollapsed = gameTime >= collapseAt
+      if (isCollapsed) {
+        platform.setVisible(false)
+        visual?.setVisible(false)
+        platform.body.enable = false
+      } else {
+        if (!platform.visible || !platform.body.enable) {
+          platform.setVisible(true)
+          visual?.setVisible(true)
+          platform.body.enable = true
+        }
+      }
+
+      const elapsed = gameTime - armedAt
+      const cycleMs = restoreAt - armedAt
+      if (elapsed <= 0 || elapsed >= cycleMs) {
+        if (bar?.active) bar.clear().setVisible(false)
+        return
+      }
+
+      if (!bar?.active) return
 
       const delayMs = collapseAt - armedAt
       const restoreMs = restoreAt - collapseAt
@@ -1659,7 +1774,66 @@ export function createAscentScene(
       const mechanicTuning = tuning.mechanics
       body.setMaxVelocity(playerTuning.speed, playerTuning.maxFallVelocity)
       body.setGravityY(playerTuning.gravity - getDifficultyTuning(false).player.gravity)
+      const isDebugFlying =
+        process.env.NODE_ENV !== 'production' && this.debugFlyEnabled && bridge.input.devFly
       const mechanics = CIRCLE_LEVELS[this.currentCircleIndex]?.mechanics ?? []
+      const moveFacing = bridge.input.moveX === 0 ? null : (bridge.input.moveX < 0 ? -1 : 1)
+      const aimFacing = resolveAimFacingDirection(
+        bridge.input.aim,
+        body.velocity.x,
+        this.player.flipX,
+      )
+
+      if (isDebugFlying) {
+        const flightSpeed = playerTuning.speed * 1.25
+        const debugVertical = Number.isInteger(bridge.input.devFlyY)
+          ? (bridge.input.devFlyY as number)
+          : 0
+        body.setMaxVelocity(flightSpeed, flightSpeed)
+        body.setGravityY(0)
+        body.setVelocityX(bridge.input.moveX * flightSpeed)
+        body.setVelocityY(debugVertical * flightSpeed)
+
+        let nextFacing = this.playerFacingDirection
+        if (moveFacing !== null) nextFacing = moveFacing
+        else if (bridge.input.aim) nextFacing = aimFacing < 0 ? -1 : 1
+        else if (Math.abs(body.velocity.x) > 8) nextFacing = body.velocity.x < 0 ? -1 : 1
+        this.playerFacingDirection = nextFacing
+        this.player.setFlipX(nextFacing < 0)
+        this.updateAimReticle(bridge.input.aim)
+
+        if (bridge.input.firePressed || bridge.input.fireHeld) this.tryFire(time)
+        bridge.input.firePressed = false
+        this.breath = recoverBreath({
+          breath: this.breath,
+          maxBreath: tuning.combat.maxBreath,
+          lastShotAtMs: this.lastShotAt,
+          nowMs: time,
+          deltaMs: delta,
+          rechargeDelayMs: tuning.combat.rechargeDelayMs,
+          rechargePerSecond: tuning.combat.rechargePerSecond,
+        })
+        if (time < this.invulnerableUntil) {
+          this.player.setAlpha(Math.floor(time / 80) % 2 === 0 ? 0.34 : 1)
+        } else {
+          this.player.setAlpha(1).clearTint()
+        }
+        if (this.lastMovingPlatform && isBodyObject(this.lastMovingPlatform)) {
+          const platform = this.lastMovingPlatform
+          const lastX = platform.getData('lastX') as number | undefined
+          const lastY = platform.getData('lastY') as number | undefined
+          if (lastX !== undefined) this.player.x += platform.x - lastX
+          if (lastY !== undefined) this.player.y += platform.y - lastY
+        }
+        this.lastMovingPlatform = null
+        this.updatePlayerAnimation(time, false)
+        if (this.player.y > this.cameras.main.scrollY + this.viewportHeight + 68) {
+          this.takeDamage('Caduta', true)
+        }
+        bridge.input.jumpPressed = false
+        return
+      }
+
       const stickyGround = mechanics.includes('sticky') && (body.blocked.down || body.touching.down)
       const targetSpeed =
         bridge.input.moveX *
@@ -1686,19 +1860,16 @@ export function createAscentScene(
           ),
         )
       }
-      const moveFacing = bridge.input.moveX === 0 ? null : (bridge.input.moveX < 0 ? -1 : 1)
-      const aimFacing = resolveAimFacingDirection(
-        bridge.input.aim,
-        body.velocity.x,
-        this.player.flipX,
-      )
+      let nextFacing = this.playerFacingDirection
       if (moveFacing !== null) {
-        this.player.setFlipX(moveFacing < 0)
+        nextFacing = moveFacing
       } else if (bridge.input.aim) {
-        this.player.setFlipX(aimFacing < 0)
+        nextFacing = aimFacing < 0 ? -1 : 1
       } else if (Math.abs(body.velocity.x) > 8) {
-        this.player.setFlipX(body.velocity.x < 0)
+        nextFacing = body.velocity.x < 0 ? -1 : 1
       }
+      this.playerFacingDirection = nextFacing
+      this.player.setFlipX(nextFacing < 0)
       this.updateAimReticle(bridge.input.aim)
 
       const grounded = body.blocked.down || body.touching.down
@@ -1807,6 +1978,9 @@ export function createAscentScene(
       } else if (!grounded) state = body.velocity.y < 0 ? 'jump' : 'fall'
       else if (Math.abs(body.velocity.x) > RUN_VELOCITY_THRESHOLD) state = 'run'
       this.playerVisual.play(state)
+      // Animation changes can refresh the rendered frame: enforce the gameplay
+      // direction afterwards so the authored sprite always mirrors to the left.
+      this.player.setFlipX(this.playerFacingDirection < 0)
     }
 
     private tryFire(time: number) {
@@ -1825,8 +1999,7 @@ export function createAscentScene(
       if (this.playerProjectiles.countActive(true) >= combat.maxProjectiles) return
       this.lastShotAt = time
       this.breath = breathAfterShot.breath
-      const body = this.player.body as Phaser.Physics.Arcade.Body
-      const facingDirection = resolveFacingDirection(body.velocity.x, this.player.flipX)
+      const facingDirection = this.playerFacingDirection
       const trajectory = resolveVerseTrajectory({
         moveX: bridge.input.moveX,
         facingDirection,

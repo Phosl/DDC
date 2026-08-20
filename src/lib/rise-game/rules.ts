@@ -44,6 +44,8 @@ export function mergeGameInput(
   if (patch.moveX !== undefined) next.moveX = patch.moveX;
   if (patch.aim !== undefined) next.aim = normalizeAimVector(patch.aim);
   if (patch.jumpHeld !== undefined) next.jumpHeld = patch.jumpHeld;
+  if (patch.devFly !== undefined) next.devFly = patch.devFly;
+  if (patch.devFlyY !== undefined) next.devFlyY = patch.devFlyY;
   if (patch.fireHeld !== undefined) next.fireHeld = patch.fireHeld;
 
   for (const key of INPUT_EDGE_KEYS) {
