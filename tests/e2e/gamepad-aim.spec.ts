@@ -131,15 +131,16 @@ test.describe("Cantica Zero 360 gamepad aim", () => {
     expect(Math.abs(up.lastShot?.velocityX ?? Infinity)).toBeLessThan(2);
   });
 
-  test("aims opposite to the run and releases safely on disconnect", async ({ page }) => {
+  test("aims opposite to the run while preserving movement-facing and releases safely", async ({ page }) => {
     const initialSequence = (await readTelemetry(page)).lastShot?.sequence ?? 0;
     await setGamepad(page, { axes: [1, 0, -1, 0], buttons: { 7: 1 } });
 
     await expect.poll(async () => (await readTelemetry(page)).player.velocityX).toBeGreaterThan(100);
-    await expect.poll(async () => (await readTelemetry(page)).player.facing).toBe(-1);
+    await expect.poll(async () => (await readTelemetry(page)).player.facing).toBe(1);
     await expect
       .poll(async () => (await readTelemetry(page)).lastShot?.sequence ?? 0)
       .toBeGreaterThan(initialSequence);
+    expect((await readTelemetry(page)).lastShot?.velocityX).toBeLessThan(-450);
 
     await setGamepad(page, { connected: false });
     await page.waitForTimeout(80);

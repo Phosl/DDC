@@ -72,6 +72,8 @@ describe("input rules", () => {
       moveX: -1,
       aim: null,
       jumpHeld: true,
+      devFly: false,
+      devFlyY: 0,
       fireHeld: true,
       jumpPressed: false,
       firePressed: false,

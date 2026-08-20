@@ -37,12 +37,18 @@ locali separati.
 
 - Movimento: `A/D` oppure `←/→`
 - Salto variabile: `W`, `↑` oppure `Spazio`
-- Verso da tastiera: `J` oppure `X`
+- Verso da tastiera: `J`
 - Joypad: stick sinistro per muoversi, `A/✕` per saltare, stick destro per
   mirare a 360°, `R2/RB` per lanciare Versi e `Start` per la pausa
 - Pausa: `P` oppure `Esc`
 
-Su schermi touch, movimento e salto restano pulsanti multi-touch; lo stick destro
-virtuale mira a 360° e lancia Versi finché viene tenuto inclinato. Grafica,
-personaggi e suoni sono originali; i riferimenti ai giochi arcade anni Novanta
-riguardano esclusivamente ritmo e leggibilità dell’azione.
+Su schermi touch, lo stick sinistro controlla il movimento, il pulsante dedicato
+gestisce il salto e lo stick destro mira a 360° e lancia Versi finché viene tenuto
+inclinato. Il nickname e le classifiche Standard/Assistita restano salvati soltanto
+nel browser locale.
+
+In sviluppo, `X` attiva il volo di verifica e `W/S` oppure `↑/↓` ne controllano
+l’altezza. L’attivazione trasforma Davide con aura, corona e scie cromatiche nella
+palette del sito; una run che usa questa modalità non è valida per record o classifica.
+Grafica, personaggi e suoni sono originali; i riferimenti ai giochi arcade anni
+Novanta riguardano esclusivamente ritmo e leggibilità dell’azione.
