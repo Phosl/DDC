@@ -1,0 +1,30 @@
+import {expect, test, type Page} from '@playwright/test'
+
+const readPlayer = (page: Page) => page.evaluate(() => window.__CANTICA_ZERO_TEST__!.readTelemetry!().player)
+
+test('articulated movement responds to run, reversal, jump and firing', async ({page}) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto('/gioco')
+  await page.getByRole('button', {name: 'Inizia la Cantica'}).click()
+  await page.getByTestId('rise-game-stage').focus()
+  await expect.poll(async () => (await readPlayer(page)).grounded, {intervals: [16]}).toBe(true)
+  await expect.poll(async () => (await readPlayer(page)).texture, {intervals: [16]}).toBe('cantica-player-motion')
+  const start = await readPlayer(page)
+  await page.keyboard.down('KeyD')
+  await expect.poll(async () => (await readPlayer(page)).visualState, {intervals: [16]}).toBe('run')
+  await page.waitForTimeout(70)
+  expect((await readPlayer(page)).x).toBeGreaterThan(start.x)
+  await page.keyboard.up('KeyD')
+  await page.keyboard.down('KeyA')
+  await expect.poll(async () => (await readPlayer(page)).facing, {intervals: [16]}).toBe(-1)
+  await page.keyboard.down('Space')
+  await expect.poll(async () => (await readPlayer(page)).velocityY, {intervals: [16]}).toBeLessThan(-100)
+  await expect.poll(async () => (await readPlayer(page)).visualState, {intervals: [16]}).toMatch(/jump/)
+  await page.keyboard.press('KeyJ')
+  await page.keyboard.up('Space')
+  await page.keyboard.up('KeyA')
+  await expect.poll(async () => (await readPlayer(page)).grounded).toBe(true)
+  await expect.poll(async () => (await readPlayer(page)).visualState).toBe('idle')
+  expect(errors).toEqual([])
+})

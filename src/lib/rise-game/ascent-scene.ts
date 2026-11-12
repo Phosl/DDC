@@ -68,6 +68,7 @@ import {
   createGodModeVisualController,
   type GodModeVisualController,
 } from './visuals/god-mode-visuals'
+import {getRunPlaybackScale} from './visuals/player-motion'
 
 type PhaserNamespace = typeof Phaser
 type BodyGameObject = Phaser.GameObjects.Rectangle | Phaser.Physics.Arcade.Sprite
@@ -820,6 +821,9 @@ export function createAscentScene(
           velocityY: body.velocity.y,
           grounded: body.blocked.down || body.touching.down,
           facing: this.player.flipX ? -1 : 1,
+          visualState: this.playerVisual?.current() ?? null,
+          texture: this.player.texture.key,
+          frame: Number(this.player.frame.name),
         },
         projectile: {
           count: projectiles.length,
@@ -1908,6 +1912,7 @@ export function createAscentScene(
         body.setVelocityY(jumpFrame.velocityY)
       }
       if (jumpFrame.jumped) {
+        this.landedUntil = -Infinity
         this.playerVisual?.play('jump-start')
         this.emitAudio('jump')
       }
@@ -1939,7 +1944,7 @@ export function createAscentScene(
       }
       this.lastMovingPlatform = null
 
-      this.updatePlayerAnimation(time, grounded)
+      this.updatePlayerAnimation(time, grounded && !jumpFrame.jumped)
       if (this.player.y > this.cameras.main.scrollY + this.viewportHeight + 68) {
         this.takeDamage('Caduta', true)
       }
@@ -1968,7 +1973,6 @@ export function createAscentScene(
       let state: PlayerVisualState = 'idle'
       if (this.phase === 'dying' && time + 280 >= this.hitUntil) state = 'defeat'
       else if (time < this.hitUntil) state = 'hit'
-      else if (time < this.landedUntil) state = 'land'
       else if (firing) {
         state = this.lastShotWasDirectional
           ? 'fire-diagonal'
@@ -1977,7 +1981,12 @@ export function createAscentScene(
             : 'fire-up-air'
       } else if (!grounded) state = body.velocity.y < 0 ? 'jump' : 'fall'
       else if (Math.abs(body.velocity.x) > RUN_VELOCITY_THRESHOLD) state = 'run'
+      else if (time < this.landedUntil) state = 'land'
+      else if (this.playerVisual.current() === 'run') state = 'brake'
       this.playerVisual.play(state)
+      this.player.anims.timeScale = this.playerVisual.current() === 'run'
+        ? getRunPlaybackScale(body.velocity.x, this.player.displayWidth)
+        : 1
       // Animation changes can refresh the rendered frame: enforce the gameplay
       // direction afterwards so the authored sprite always mirrors to the left.
       this.player.setFlipX(this.playerFacingDirection < 0)

@@ -27,10 +27,12 @@ test.describe("Cantica Zero game shell", () => {
   test("responds to held movement, variable jump and an airborne diagonal Verse", async ({ page }) => {
     await page.getByRole("button", { name: "Inizia la Cantica" }).click();
     await page.getByTestId("rise-game-stage").focus();
+    // The spawn drops onto the first platform before a grounded jump is possible.
+    await expect.poll(async () => (await readTelemetry(page)).player.grounded).toBe(true);
 
     const start = await readTelemetry(page);
     await page.keyboard.down("KeyD");
-    await page.waitForTimeout(140);
+    await expect.poll(async () => (await readTelemetry(page)).player.x, { intervals: [16] }).toBeGreaterThan(start.player.x + 12);
     const running = await readTelemetry(page);
     expect(running.player.x).toBeGreaterThan(start.player.x + 12);
     expect(running.player.velocityX).toBeGreaterThan(100);

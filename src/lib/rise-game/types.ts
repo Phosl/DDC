@@ -73,6 +73,9 @@ export type GameTelemetry = Readonly<{
     velocityY: number
     grounded: boolean
     facing: -1 | 1
+    visualState: string | null
+    texture: string
+    frame: number
   }>
   projectile: Readonly<{
     count: number

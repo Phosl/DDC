@@ -1,3 +1,5 @@
+import {PLAYER_MOTION} from './player-motion';
+
 export const ACTOR_ATLAS = {
   player: {
     key: "cantica-player-v3",
@@ -29,7 +31,7 @@ export type ActorAtlasId = keyof typeof ACTOR_ATLAS;
 
 export type ActorAnimationDefinition = Readonly<{
   key: string;
-  textureKey: (typeof ACTOR_ATLAS)[ActorAtlasId]["key"];
+  textureKey: (typeof ACTOR_ATLAS)[ActorAtlasId]["key"] | typeof PLAYER_MOTION.key;
   frames: readonly number[];
   frameRate: number;
   durationMs?: number;
@@ -161,7 +163,43 @@ export const PLAYER_VISUAL = {
   animations: Record<string, ActorAnimationDefinition>;
 };
 
-export type PlayerVisualState = keyof typeof PLAYER_VISUAL.animations;
+const motionFrames = (state: keyof typeof PLAYER_MOTION.clips) => {
+  const clip = PLAYER_MOTION.clips[state];
+  return Array.from({length: clip.count}, (_,i) => clip.start + i);
+};
+
+function motionAnimation(state: Exclude<keyof typeof PLAYER_MOTION.clips, 'brake'>): ActorAnimationDefinition {
+  return {
+    ...PLAYER_VISUAL.animations[state],
+    key: `davide-motion-${state}`,
+    textureKey: PLAYER_MOTION.key,
+    frames: motionFrames(state),
+    frameRate: PLAYER_MOTION.clips[state].fps,
+    ...(state === 'land' ? {durationMs: 133, priority: 5} : {}),
+    ...(state === 'jump' || state === 'fall' ? {repeat: 0} : {}),
+  };
+}
+
+export const PLAYER_MOTION_ANIMATIONS = {
+  ...PLAYER_VISUAL.animations,
+  idle: motionAnimation('idle'),
+  run: motionAnimation('run'),
+  'jump-start': motionAnimation('jump-start'),
+  jump: motionAnimation('jump'),
+  fall: motionAnimation('fall'),
+  land: motionAnimation('land'),
+  brake: {
+    key: 'davide-motion-brake',
+    textureKey: PLAYER_MOTION.key,
+    frames: motionFrames('brake'),
+    frameRate: 60,
+    repeat: 0,
+    priority: 5,
+    lockUntilComplete: true,
+  },
+} as const satisfies Record<string, ActorAnimationDefinition>;
+
+export type PlayerVisualState = keyof typeof PLAYER_MOTION_ANIMATIONS;
 
 export const ENEMY_VISUAL = {
   display: { width: 48, height: 48 },

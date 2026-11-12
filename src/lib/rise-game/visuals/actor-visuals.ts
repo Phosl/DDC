@@ -1,4 +1,5 @@
 import type Phaser from 'phaser'
+import {createMotionAtlas, PLAYER_MOTION} from './player-motion'
 
 import {
   ACTOR_ANIMATIONS,
@@ -6,6 +7,7 @@ import {
   BOSS_VISUAL,
   ENEMY_VISUAL,
   PLAYER_VISUAL,
+  PLAYER_MOTION_ANIMATIONS,
   getBossAnimation,
   getEnemyVisualState,
   type ActorAnimationDefinition,
@@ -199,6 +201,11 @@ export function createActorVisualController<State extends string>({
 export function queueActorAtlases(scene: Phaser.Scene): string[] {
   const queued: string[] = []
 
+  if (!scene.textures.exists(PLAYER_MOTION.sourceKey)) {
+    scene.load.image(PLAYER_MOTION.sourceKey, PLAYER_MOTION.sourcePath)
+    queued.push(PLAYER_MOTION.sourceKey)
+  }
+
   Object.values(ACTOR_ATLAS).forEach((atlas) => {
     if (scene.textures.exists(atlas.key)) return
     scene.load.spritesheet(atlas.key, atlas.path, {
@@ -220,7 +227,22 @@ export function registerActorAnimations(scene: Phaser.Scene): ActorAnimationRegi
   const registered: string[] = []
   const skippedMissingTexture: string[] = []
 
-  ACTOR_ANIMATIONS.forEach((definition) => {
+  if (!scene.textures.exists(PLAYER_MOTION.key) && scene.textures.exists(PLAYER_MOTION.sourceKey)) {
+    const source = scene.textures.get(PLAYER_MOTION.sourceKey).getSourceImage() as HTMLImageElement
+    const texture = scene.textures.addCanvas(PLAYER_MOTION.key, createMotionAtlas(source))
+    for (const clip of Object.values(PLAYER_MOTION.clips)) {
+      for (let i = 0; i < clip.count; i++) {
+        const frame = clip.start + i
+        texture?.add(frame, 0, frame % PLAYER_MOTION.columns * 64,
+          Math.floor(frame / PLAYER_MOTION.columns) * 64, 64, 64)
+      }
+    }
+  }
+
+  const animations: readonly ActorAnimationDefinition[] = scene.textures.exists(PLAYER_MOTION.key)
+    ? [...ACTOR_ANIMATIONS, ...Object.values(PLAYER_MOTION_ANIMATIONS)]
+    : ACTOR_ANIMATIONS
+  animations.forEach((definition) => {
     if (scene.anims.exists(definition.key)) return
     if (!scene.textures.exists(definition.textureKey)) {
       skippedMissingTexture.push(definition.key)
@@ -346,8 +368,10 @@ export function createPlayerVisualController(
   scale = 1,
 ): ActorVisualController<PlayerVisualState> {
   applyPivotAndDisplay(sprite, PLAYER_VISUAL, scale)
-  const controller = createActorVisualController({
-    definitions: PLAYER_VISUAL.animations,
+  const controller = createActorVisualController<PlayerVisualState>({
+    definitions: scene.textures.exists(PLAYER_MOTION.key)
+      ? PLAYER_MOTION_ANIMATIONS
+      : {...PLAYER_VISUAL.animations, brake: PLAYER_VISUAL.animations.idle},
     fallbackState: 'idle',
     driver: createPhaserAnimationDriver(scene, sprite),
   })
