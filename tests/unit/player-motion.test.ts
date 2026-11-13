@@ -1,11 +1,11 @@
 import {describe, expect, it} from 'vitest'
-import {bendJoint, getRunPlaybackScale, PLAYER_MOTION, samplePlayerMotion, strideFoot, type MotionState} from '../../src/lib/rise-game/visuals/player-motion'
+import {bendJoint, footAnkle, getRunPlaybackScale, PLAYER_MOTION, samplePlayerMotion, strideFoot, type MotionState} from '../../src/lib/rise-game/visuals/player-motion'
 import {PLAYER_MOTION_ANIMATIONS, type PlayerVisualState} from '../../src/lib/rise-game/visuals/visual-manifest'
 import {createActorVisualController, type ActorAnimationDriver} from '../../src/lib/rise-game/visuals/actor-visuals'
 
 describe('articulated Davide motion', () => {
   it('keeps the ground contact fixed vertically and sweeps it at constant speed', () => {
-    const contacts = [0, 0.1, 0.2, 0.3, 0.4, 0.5].map(strideFoot)
+    const contacts = [0, 0.1, 0.2, 0.3, 0.4].map(strideFoot)
     expect(new Set(contacts.map(p => p.y)).size).toBe(1)
     for (let i = 2; i < contacts.length; i++) {
       expect(contacts[i].x - contacts[i - 1].x).toBeCloseTo(contacts[1].x - contacts[0].x)
@@ -19,9 +19,47 @@ describe('articulated Davide motion', () => {
       const first = samplePlayerMotion(state, 0)
       const last = samplePlayerMotion(state, 1)
       for (const key of Object.keys(first) as Array<keyof typeof first>) {
-        expect(last[key].x).toBeCloseTo(first[key].x)
-        expect(last[key].y).toBeCloseTo(first[key].y)
+        const a = first[key], b = last[key]
+        if (typeof a === 'number' && typeof b === 'number') expect(b).toBeCloseTo(a)
+        else if (typeof a !== 'number' && typeof b !== 'number') {
+          expect(b.x).toBeCloseTo(a.x)
+          expect(b.y).toBeCloseTo(a.y)
+        }
       }
+    }
+  })
+
+  it('includes a clear flight frame on both strides without moving planted contacts', () => {
+    const poses = Array.from({length: 24}, (_, i) => samplePlayerMotion('run', i / 24))
+    const flying = poses.map((pose, i) => pose.frontFoot.y < 54 && pose.backFoot.y < 54 ? i : -1).filter(i => i >= 0)
+    expect(flying).toEqual([11, 23])
+    for (const phase of [0, 0.1, 0.2, 0.3, 0.4]) {
+      const pose = samplePlayerMotion('run', phase)
+      const ankle = footAnkle(pose.frontFoot, pose.frontFootTilt)
+      const pivotX = pose.frontFootTilt < 0 ? -4 : 6
+      const toeOrHeel = {
+        x: ankle.x + Math.cos(pose.frontFootTilt) * pivotX - Math.sin(pose.frontFootTilt) * 2.5,
+        y: ankle.y + Math.sin(pose.frontFootTilt) * pivotX + Math.cos(pose.frontFootTilt) * 2.5,
+      }
+      expect(toeOrHeel.x).toBeCloseTo(pose.frontFoot.x + pivotX)
+      expect(toeOrHeel.y).toBeCloseTo(59)
+    }
+  })
+
+  it('keeps idle and brake feet planted and joins the authored airborne poses', () => {
+    for (const state of ['idle', 'brake'] as const) {
+      const start = samplePlayerMotion(state, 0)
+      for (const phase of [0.25, 0.5, 0.75, 1]) {
+        const pose = samplePlayerMotion(state, phase)
+        expect(pose.frontFoot).toEqual(start.frontFoot)
+        expect(pose.backFoot).toEqual(start.backFoot)
+      }
+    }
+    for (const [from, to] of [['jump-start', 'jump'], ['jump', 'fall'], ['fall', 'land']] as const) {
+      const numbers = (state: MotionState, progress: number) => Object.values(samplePlayerMotion(state, progress))
+        .flatMap(value => typeof value === 'number' ? [value] : [value.x, value.y])
+      const target = numbers(to, 0)
+      numbers(from, 1).forEach((value, i) => expect(value).toBeCloseTo(target[i]))
     }
   })
 
@@ -49,11 +87,20 @@ describe('articulated Davide motion', () => {
     for (const state of Object.keys(PLAYER_MOTION.clips) as MotionState[]) {
       for (let i = 0; i <= 100; i++) {
         for (const p of Object.values(samplePlayerMotion(state, i / 100))) {
+          if (typeof p === 'number') {expect(Number.isFinite(p)).toBe(true); continue}
           expect(Number.isFinite(p.x) && Number.isFinite(p.y)).toBe(true)
           expect(p.x).toBeGreaterThan(4)
           expect(p.x).toBeLessThan(60)
           expect(p.y).toBeGreaterThan(4)
           expect(p.y).toBeLessThan(60)
+        }
+        const pose = samplePlayerMotion(state, i / 100)
+        for (const side of ['front', 'back'] as const) {
+          const hip = {x: pose.hip.x + (side === 'front' ? 2 : -2), y: pose.hip.y}
+          const ankle = footAnkle(pose[`${side}Foot`], pose[`${side}FootTilt`])
+          const knee = bendJoint(hip, ankle)
+          expect(Math.hypot(knee.x - hip.x, knee.y - hip.y)).toBeCloseTo(12)
+          expect(Math.hypot(knee.x - ankle.x, knee.y - ankle.y)).toBeCloseTo(12)
         }
       }
     }

@@ -14,3 +14,4 @@ coverage/
 doc/
 *.m4a
 *.HEIC
+.vercel
