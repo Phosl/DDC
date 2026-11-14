@@ -7,6 +7,15 @@ const LAST_UPDATED = new Date("2026-08-14T00:00:00+02:00");
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
+      url: absoluteUrl("/ig"),
+      lastModified: new Date("2026-11-14T00:00:00+01:00"),
+      changeFrequency: "monthly",
+      priority: 0.6,
+      images: ["01-cella", "02-featuring", "03-trasformazione", "04-salto", "05-fuori"].map(
+        (image) => absoluteUrl(`/media/ig/${image}.webp`),
+      ),
+    },
+    {
       url: absoluteUrl(),
       lastModified: LAST_UPDATED,
       changeFrequency: "monthly",

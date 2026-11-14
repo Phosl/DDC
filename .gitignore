@@ -6,6 +6,7 @@ tmp/
 test-results/
 playwright-report/
 coverage/
+artifacts/
 *.tsbuildinfo
 *.log
 .DS_Store

@@ -28,6 +28,7 @@ export const navigation = [
   { label: "Il viaggio", href: "/#viaggio" },
   { label: "Progetto", href: "/#progetto" },
   { label: "Gioco", href: "/gioco" },
+  { label: "IG", href: "/ig" },
 ] as const;
 
 export const journeyChapters: JourneyChapter[] = [
