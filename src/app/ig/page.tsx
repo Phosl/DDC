@@ -14,22 +14,22 @@ export const metadata: Metadata = {
     title: "Ghetto Superstar · La campagna IG",
     description: "Quattro post, una risalita. DDC × O.G. Eastbull · 27 novembre 2026.",
     url: "/ig",
-    images: [{ url: "/media/ig/03-trasformazione.webp", width: 1122, height: 1402, alt: "Davide nel carcere-pozzo, Ghetto Superstar" }],
+    images: [{ url: "/media/materiali/post-01-attuale.webp", width: 1122, height: 1402, alt: "Davide nel carcere infernale, Ghetto Superstar" }],
   },
   twitter: {
     card: "summary_large_image",
-    images: ["/media/ig/03-trasformazione.webp"],
+    images: ["/media/materiali/post-01-attuale.webp"],
   },
 };
 
 const posts = [
   {
     number: "01",
-    date: "2026-11-14",
-    day: "14 novembre",
+    date: "2026-11-17",
+    day: "17 novembre",
     title: "Il fondo",
     description: "Il cielo è lontano. Ma si vede.",
-    images: [{ src: "01-cella", label: "La cella", alt: "Davide seduto nella cella guarda la luce lontana in cima al carcere-pozzo." }],
+    images: [{ src: "/media/materiali/post-01-attuale", label: "La cella · versione attuale", alt: "Davide senza occhiali, seduto nella cella del carcere infernale, tra gironi di pietra e una luce lontana in alto." }],
   },
   {
     number: "02",
@@ -37,7 +37,7 @@ const posts = [
     day: "20 novembre",
     title: "L’incontro",
     description: "DDC × O.G. Eastbull. Il featuring, dentro la storia.",
-    images: [{ src: "02-featuring", label: "Il featuring", alt: "Davide su una galleria del carcere-pozzo. Annuncio DDC × O.G. Eastbull, 27 novembre." }],
+    images: [{ src: "/media/ig/02-featuring", label: "Il featuring", alt: "Davide su una galleria del carcere-pozzo. Annuncio DDC × O.G. Eastbull, 27 novembre." }],
   },
   {
     number: "03",
@@ -45,7 +45,7 @@ const posts = [
     day: "23 novembre",
     title: "La trasformazione",
     description: "Le origini restano. Cambia lo sguardo.",
-    images: [{ src: "03-trasformazione", label: "Ghetto Superstar", alt: "Davide in piedi, deciso e illuminato dall’alto, nel carcere-pozzo. Ghetto Superstar, 27 novembre." }],
+    images: [{ src: "/media/ig/03-trasformazione", label: "Ghetto Superstar", alt: "Davide in piedi, deciso e illuminato dall’alto, nel carcere-pozzo. Ghetto Superstar, 27 novembre." }],
   },
   {
     number: "04",
@@ -54,8 +54,8 @@ const posts = [
     title: "Il salto",
     description: "Il salto non cancella il fondo. Ti porta fuori.",
     images: [
-      { src: "04-salto", label: "1 / 2 · Il salto", alt: "Davide salta dall’ultimo cornicione verso la porta aperta del carcere-pozzo, con il vuoto sotto di lui." },
-      { src: "05-fuori", label: "2 / 2 · Finalmente fuori", alt: "Davide finalmente all’aperto, con il carcere-pozzo alle spalle e il cielo luminoso davanti." },
+      { src: "/media/ig/04-salto", label: "1 / 2 · Il salto", alt: "Davide salta dall’ultimo cornicione verso la porta aperta del carcere-pozzo, con il vuoto sotto di lui." },
+      { src: "/media/ig/05-fuori", label: "2 / 2 · Finalmente fuori", alt: "Davide finalmente all’aperto, con il carcere-pozzo alle spalle e il cielo luminoso davanti." },
     ],
   },
 ];
@@ -74,6 +74,7 @@ export default function InstagramPage() {
             <p className={styles.release}>DDC × O.G. Eastbull<br /><strong>27 novembre 2026</strong></p>
           </div>
           <p className={styles.hint}>Calendario previsto · Apri un’immagine per vederla intera.</p>
+          <p><Link href="/materiali">Materiali, reel, caption e file per Instagram →</Link></p>
         </header>
 
         <div id="post" className={styles.posts}>
@@ -83,15 +84,16 @@ export default function InstagramPage() {
                 <p className={styles.eyebrow}>Post {post.number} <span>／</span> <time dateTime={post.date}>{post.day}</time></p>
                 <h2 id={`post-${post.number}`}>{post.title}</h2>
                 <p>{post.description}</p>
+                <p className={styles.hint}>{postIndex === 0 ? "Ultima revisione · Da rivedere prima della pubblicazione" : "Prima bozza · Volto e ambientazione da aggiornare"}</p>
                 {post.images.length > 1 && <p className={styles.hint}>Carosello · 2 immagini</p>}
               </header>
               <div className={styles.images}>
                 {post.images.map((picture) => (
                   <figure className={styles.figure} key={picture.src}>
-                    <a className={styles.imageLink} href={`/media/ig/${picture.src}.webp`} target="_blank" rel="noopener noreferrer" aria-label={`Apri ${picture.label}, immagine intera in una nuova scheda`}>
-                      <Image src={`/media/ig/${picture.src}.webp`} alt={picture.alt} width={1122} height={1402} unoptimized loading={postIndex === 0 ? "eager" : "lazy"} className={styles.image} />
+                    <a className={styles.imageLink} href={`${picture.src}.webp`} target="_blank" rel="noopener noreferrer" aria-label={`Apri ${picture.label}, immagine intera in una nuova scheda`}>
+                      <Image src={`${picture.src}.webp`} alt={picture.alt} width={1122} height={1402} unoptimized loading={postIndex === 0 ? "eager" : "lazy"} className={styles.image} />
                     </a>
-                    <figcaption><span>{picture.label}</span><a href={`/media/ig/${picture.src}.png`} download>Scarica PNG <span aria-hidden="true">↓</span></a></figcaption>
+                    <figcaption><span>{picture.label}</span><a href={`${picture.src}.png`} download>Scarica PNG <span aria-hidden="true">↓</span></a></figcaption>
                   </figure>
                 ))}
               </div>
