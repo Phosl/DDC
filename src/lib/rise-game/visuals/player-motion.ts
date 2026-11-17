@@ -2,7 +2,7 @@
 export const PLAYER_MOTION = {
   key: 'cantica-player-motion',
   sourceKey: 'davide-motion-source',
-  sourcePath: '/game/v2/sprites/davide-atlas-v2.png',
+  sourcePath: '/game/v4/actors/davide-source.png',
   size: 64,
   columns: 12,
   clips: {
@@ -265,7 +265,7 @@ export function drawPlayerMotion(ctx: CanvasRenderingContext2D, source: CanvasIm
   state: MotionState, progress: number) {
   const pose = samplePlayerMotion(state, progress)
   const {hip, neck} = pose
-  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingEnabled = false
 
   const limb = (a: Point, joint: Point, end: Point, leg: boolean, footTilt = 0) => {
     if (leg) {

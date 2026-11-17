@@ -3,7 +3,7 @@ import {PLAYER_MOTION} from './player-motion';
 export const ACTOR_ATLAS = {
   player: {
     key: "cantica-player-v3",
-    path: "/game/v3/actors/davide-body.png",
+    path: "/game/v4/actors/davide-body.png",
     frameWidth: 64,
     frameHeight: 64,
     columns: 6,

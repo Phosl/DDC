@@ -13,7 +13,17 @@ The production assets in `public/game/` are original pixel-art generations made 
 
 Dite and Phlegethon are treated as consecutive places, not synonyms: the fortified city belongs to Inferno VIII–X; the river appears later in the seventh circle.
 
-## Generated asset brief
+## Current v4 player and infernal environments — 17 November 2026
+
+The playable Davide and the three in-level environments now use `public/game/v4/`. Built-in ImageGen used the approved campaign portrait `K01-inferno-ritratto-naturale-v8.png`. Davide has visible eyes without sunglasses, short swept-back dark hair, light stubble, a forehead cut and cheek scar, a worn black T-shirt, grey jeans and reference arm tattoos. Both the action atlas and the procedural moving character share this face.
+
+- `actors/davide-body.png`: 384×256 RGBA, 24 ordered 64×64 poses. Existing frame mapping, pivot and footline are preserved.
+- `actors/davide-source.png`: 256×256 first-pose source for the existing 84-frame renderer. Nearest-neighbour sampling preserves pixel edges; joints, timing and physics are unchanged.
+- `backgrounds/giudecca.webp`, `dite.webp`, `stelle.webp`: opaque 887×1774 pixel-art plates. Icy prison, fiery galleries and ascent toward starlight share carved arches, relief faces and chains. Each plate covers one circle, with lateral parallax, pixel fog at joins and lazy loading by act.
+
+The actor master uses the existing `processGameAtlas` pipeline with `normalize: true`, `sourceLayout: 'components'`, `alphaThreshold: 128`, `normalizationScale: 'sheet'`, `gutter: 3`, `footline: 58`. Backgrounds are exported as WebP quality 94 without creative post-processing. Masters and exact built-in prompts are in the parent workspace under `outputs/game-art-v4/` (`final-prompts.json`). Enemies, bosses and detached VFX remain v3; old player and background assets remain as provenance.
+
+## Earlier environment brief
 
 The three environment atlases share this brief: original 16-bit side-scrolling pixel art; hard pixel clusters and controlled dithering; three independently composited depth layers; DDC's black, cyan, magenta, and off-white palette; no text, gore, generic demons, military imagery, or recognizable elements from existing games.
 
@@ -32,6 +42,6 @@ Normalization is reproducible with `scripts/process-game-atlas.mjs`. It validate
 
 Davide's production action atlas and the earlier five animation studies (`idle`, `run`, `rise`, `verse`, `hit`) were generated from the project's supplied portraits as identity references. Locked traits: short curls and fade, trimmed beard, square sunglasses, black oversized T-shirt, chain, grey jeans, tattoos, and a microphone. The prompt explicitly prohibited weapons, logos, military poses, and imitation of existing characters.
 
-The runtime uses `public/game/v3/actors/davide-body.png`: 24 ordered action frames covering idle, run, jump, fall, landing, ground/air Verse, diagonal Verse, hit, defeat, and respawn. The production frame map omits two source poses whose baked accents displace the body anchor; the aligned poses are paired with the detached VFX atlas instead. Projectile travel, impacts, damage, dissolve and the main respawn effects still come from `public/game/v3/effects/cantica-vfx-atlas.png`.
+The earlier runtime used `public/game/v3/actors/davide-body.png`: 24 ordered action frames covering idle, run, jump, fall, landing, ground/air Verse, diagonal Verse, hit, defeat, and respawn. The production frame map omits two source poses whose baked accents displace the body anchor; the aligned poses are paired with the detached VFX atlas instead. Projectile travel, impacts, damage, dissolve and the main respawn effects still come from `public/game/v3/effects/cantica-vfx-atlas.png`.
 
-All generated masters were post-processed locally for transparent backgrounds and integrated through typed frame maps with fixed pivots. The files under `public/game/v3/` are the current Phaser production atlases; earlier v2 strips remain as documented visual studies and fallback provenance.
+All generated masters were post-processed locally for transparent backgrounds and integrated through typed frame maps with fixed pivots. The v3 enemies, bosses and effects remain current; the player is superseded by v4; earlier v2 strips remain as documented visual studies and fallback provenance.

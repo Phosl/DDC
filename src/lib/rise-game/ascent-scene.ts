@@ -10,7 +10,6 @@ import {
   WORLD_WIDTH,
   getDifficultyTuning,
   resolveAdaptiveHorizontalBounds,
-  resolveBackgroundTileTransform,
   resolveRuntimeWorldGeometry,
   type AdaptiveHorizontalRole,
   type RuntimeWorldGeometry,
@@ -69,6 +68,12 @@ import {
   type GodModeVisualController,
 } from './visuals/god-mode-visuals'
 import {getRunPlaybackScale} from './visuals/player-motion'
+import {
+  BACKGROUND_ALPHA,
+  BACKGROUND_OVERSCAN,
+  INFERNO_BACKGROUNDS,
+  resolveInfernoBackgroundTransform,
+} from './visuals/background-manifest'
 
 type PhaserNamespace = typeof Phaser
 type BodyGameObject = Phaser.GameObjects.Rectangle | Phaser.Physics.Arcade.Sprite
@@ -358,6 +363,7 @@ export function createAscentScene(
     private backgroundLevelsDrawn = new Set<string>()
     private backgroundTiles = new Set<Phaser.GameObjects.TileSprite>()
     private backgroundWashes = new Set<Phaser.GameObjects.Rectangle>()
+    private backgroundSeams = new Set<Phaser.GameObjects.Graphics>()
     private spiralForeground = new Set<Phaser.GameObjects.Rectangle>()
     private adaptiveStaticGeometry = new Set<AdaptiveStaticGeometry>()
     private lastMovingPlatform: Phaser.GameObjects.GameObject | null = null
@@ -426,6 +432,7 @@ export function createAscentScene(
       this.backgroundLevelsDrawn.clear()
       this.backgroundTiles.clear()
       this.backgroundWashes.clear()
+      this.backgroundSeams.clear()
       this.spiralForeground.clear()
       this.adaptiveStaticGeometry.clear()
       this.lastMovingPlatform = null
@@ -450,9 +457,8 @@ export function createAscentScene(
         frameWidth: 221,
         frameHeight: 295,
       })
-      ;(['far', 'mid', 'near'] as const).forEach((layer) => {
-        this.load.image(`background-giudecca-${layer}`, `/game/backgrounds/giudecca-${layer}.webp`)
-      })
+      const background = INFERNO_BACKGROUNDS.giudecca
+      this.load.image(background.key, background.src)
     }
 
     create() {
@@ -715,22 +721,23 @@ export function createAscentScene(
       })
       this.backgroundTiles.forEach((tile) => {
         tile.setPosition(WORLD_WIDTH / 2, tile.y)
-        tile.setSize(this.viewportWidth, LEVEL_HEIGHT)
         const sourceWidth = tile.getData('sourceWidth') as number | undefined
         const sourceHeight = tile.getData('sourceHeight') as number | undefined
-        const transform = resolveBackgroundTileTransform({
+        const transform = resolveInfernoBackgroundTransform({
           viewportWidth: this.viewportWidth,
-          textureWidth: sourceWidth ?? 0,
-          textureHeight: sourceHeight ?? 0,
+          textureWidth: sourceWidth ?? GAME_WIDTH * 2,
+          textureHeight: sourceHeight ?? LEVEL_HEIGHT * 2,
         })
         tile
-          .setTileScale(transform.scaleX, transform.scaleY)
+          .setSize(transform.width, LEVEL_HEIGHT)
+          .setTileScale(transform.scale)
           .setTilePosition(transform.positionX, transform.positionY)
       })
       this.backgroundWashes.forEach((wash) => {
         wash.setPosition(WORLD_WIDTH / 2, wash.y)
         wash.setDisplaySize(this.viewportWidth, LEVEL_HEIGHT)
       })
+      this.backgroundSeams.forEach((seam) => this.drawBackgroundSeam(seam))
       this.godModeVisual?.resize(this.viewportWidth, this.viewportHeight)
 
       if (this.player?.active && this.player.body) {
@@ -844,12 +851,10 @@ export function createAscentScene(
       if (this.loadedActs.has(actIndex) || this.loadingActs.has(actIndex)) return
       const bossId: BossId = actIndex === 1 ? 'pluto' : 'charon'
       const theme = actIndex === 1 ? 'dite' : 'stelle'
-      ;(['far', 'mid', 'near'] as const).forEach((layer) => {
-        const key = `background-${theme}-${layer}`
-        if (!this.textures.exists(key)) {
-          this.load.image(key, `/game/backgrounds/${theme}-${layer}.webp`)
-        }
-      })
+      const background = INFERNO_BACKGROUNDS[theme]
+      if (!this.textures.exists(background.key)) {
+        this.load.image(background.key, background.src)
+      }
       this.loadingActs.add(actIndex)
       this.load.once('complete', () => this.finishActAssetLoad(actIndex, bossId))
       this.load.start()
@@ -988,7 +993,7 @@ export function createAscentScene(
           this.viewportWidth,
           LEVEL_HEIGHT,
           palette.sky,
-          0.2,
+          0.12,
         )
         .setDepth(-18)
       this.backgroundWashes.add(wash)
@@ -1154,43 +1159,47 @@ export function createAscentScene(
 
     private createLevelBackground(level: CircleLevelDefinition, offsetY: number) {
       if (this.backgroundLevelsDrawn.has(level.id)) return
-      const actKey = level.actIndex === 0 ? 'giudecca' : level.actIndex === 1 ? 'dite' : 'stelle'
-      if (
-        !(['far', 'mid', 'near'] as const).every((layer) =>
-          this.textures.exists(`background-${actKey}-${layer}`),
-        )
-      ) {
-        return
-      }
+      const {key} = INFERNO_BACKGROUNDS[level.theme]
+      if (!this.textures.exists(key)) return
       this.backgroundLevelsDrawn.add(level.id)
-      ;(['far', 'mid', 'near'] as const).forEach((layer, layerIndex) => {
-        const key = `background-${actKey}-${layer}`
-        if (!this.textures.exists(key)) return
-        const tile = this.add.tileSprite(
-          WORLD_WIDTH / 2,
-          offsetY + LEVEL_HEIGHT / 2,
-          this.viewportWidth,
-          LEVEL_HEIGHT,
-          key,
-        )
-        const source = this.textures.getFrame(key)?.source
-        const sourceWidth = source?.width ?? GAME_WIDTH * 2
-        const sourceHeight = source?.height ?? LEVEL_HEIGHT * 2
-        const transform = resolveBackgroundTileTransform({
-          viewportWidth: this.viewportWidth,
-          textureWidth: sourceWidth,
-          textureHeight: sourceHeight,
-        })
-        tile
-          .setData('sourceWidth', sourceWidth)
-          .setData('sourceHeight', sourceHeight)
-          .setData('spiralLayer', layerIndex)
-          .setTileScale(transform.scaleX, transform.scaleY)
-          .setTilePosition(transform.positionX, transform.positionY)
-        tile.setAlpha([0.48, 0.44, 0.32][layerIndex])
-        tile.setDepth(-30 + layerIndex * 3)
-        this.backgroundTiles.add(tile)
+      const source = this.textures.getFrame(key)?.source
+      const sourceWidth = source?.width ?? GAME_WIDTH * 2
+      const sourceHeight = source?.height ?? LEVEL_HEIGHT * 2
+      const transform = resolveInfernoBackgroundTransform({
+        viewportWidth: this.viewportWidth,
+        textureWidth: sourceWidth,
+        textureHeight: sourceHeight,
       })
+      const tile = this.add.tileSprite(
+        WORLD_WIDTH / 2,
+        offsetY + LEVEL_HEIGHT / 2,
+        transform.width,
+        LEVEL_HEIGHT,
+        key,
+      )
+      tile
+        .setData('sourceWidth', sourceWidth)
+        .setData('sourceHeight', sourceHeight)
+        .setTileScale(transform.scale)
+        .setTilePosition(transform.positionX, transform.positionY)
+        .setAlpha(BACKGROUND_ALPHA)
+        .setDepth(-30)
+      this.backgroundTiles.add(tile)
+
+      const seam = this.add.graphics().setPosition(WORLD_WIDTH / 2, offsetY).setDepth(-20)
+      this.drawBackgroundSeam(seam)
+      this.backgroundSeams.add(seam)
+    }
+
+    private drawBackgroundSeam(seam: Phaser.GameObjects.Graphics) {
+      const width = this.viewportWidth + BACKGROUND_OVERSCAN * 2
+      seam.clear()
+      // Pixel-stepped fog joins the authored plates without a sharp horizontal cut.
+      for (let step = 0; step < 8; step += 1) {
+        seam.fillStyle(0x081015, (1 - step / 8) ** 2)
+        seam.fillRect(-width / 2, step * 8, width, 8)
+        seam.fillRect(-width / 2, LEVEL_HEIGHT - (step + 1) * 8, width, 8)
+      }
     }
 
     private createPlatform(
@@ -2405,9 +2414,7 @@ export function createAscentScene(
       )
       this.cameras.main.scrollX = desiredX
       this.backgroundTiles.forEach((tile) => {
-        const layerIndex = (tile.getData('spiralLayer') as number | undefined) ?? 0
-        tile.setX(WORLD_WIDTH / 2 + spiralOffset * (0.18 + layerIndex * 0.12))
-        tile.setAlpha([0.5, 0.46, 0.34][layerIndex] + Math.abs(spiralOffset) * 0.001)
+        tile.setX(WORLD_WIDTH / 2 + spiralOffset * 0.18)
       })
       let spiralBandIndex = 0
       this.spiralForeground.forEach((band) => {

@@ -12,7 +12,7 @@ import {
   validateAtlasData,
   validateAtlasFile,
 } from "../../scripts/process-game-atlas.mjs";
-import { PLAYER_VISUAL } from "../../src/lib/rise-game/visuals/visual-manifest";
+import { ACTOR_ATLAS, PLAYER_VISUAL } from "../../src/lib/rise-game/visuals/visual-manifest";
 
 const WIDTH = 384;
 const HEIGHT = 256;
@@ -43,7 +43,7 @@ async function rawPixels(file: string) {
 describe("game atlas pipeline", () => {
   it("ships the approved Davide action atlas with transparent gutters", async () => {
     const report = await validateAtlasFile(
-      path.join(process.cwd(), "public/game/v3/actors/davide-body.png"),
+      path.join(process.cwd(), "public", ACTOR_ATLAS.player.path),
       { gutter: 3, maxGreenSpill: 0.01 },
     );
 
