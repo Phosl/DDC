@@ -37,7 +37,7 @@ const posts = [
     day: "20 novembre",
     title: "L’incontro",
     description: "DDC × O.G. Eastbull. Il featuring, dentro la storia.",
-    images: [{ src: "/media/ig/02-featuring", label: "Il featuring", alt: "Davide su una galleria del carcere-pozzo. Annuncio DDC × O.G. Eastbull, 27 novembre." }],
+    images: [{ src: "/media/materiali/post-02-featuring-v2", label: "Il featuring · revisione 2", alt: "Davide nel carcere infernale, con il volto aggiornato. Annuncio DDC × O.G. Eastbull, 27 novembre." }],
   },
   {
     number: "03",
@@ -45,7 +45,7 @@ const posts = [
     day: "23 novembre",
     title: "La trasformazione",
     description: "Le origini restano. Cambia lo sguardo.",
-    images: [{ src: "/media/ig/03-trasformazione", label: "Ghetto Superstar", alt: "Davide in piedi, deciso e illuminato dall’alto, nel carcere-pozzo. Ghetto Superstar, 27 novembre." }],
+    images: [{ src: "/media/materiali/post-03-trasformazione-v2", label: "Ghetto Superstar · revisione 2", alt: "Davide con il volto aggiornato e i segni del percorso si trasforma in Ghetto Superstar nel carcere infernale." }],
   },
   {
     number: "04",
@@ -54,8 +54,8 @@ const posts = [
     title: "Il salto",
     description: "Il salto non cancella il fondo. Ti porta fuori.",
     images: [
-      { src: "/media/ig/04-salto", label: "1 / 2 · Il salto", alt: "Davide salta dall’ultimo cornicione verso la porta aperta del carcere-pozzo, con il vuoto sotto di lui." },
-      { src: "/media/ig/05-fuori", label: "2 / 2 · Finalmente fuori", alt: "Davide finalmente all’aperto, con il carcere-pozzo alle spalle e il cielo luminoso davanti." },
+      { src: "/media/materiali/post-04-salto-v2", label: "1 / 2 · Il salto · revisione 2", alt: "Davide salta verso l’uscita del carcere infernale, con il vuoto dei gironi sotto di lui." },
+      { src: "/media/materiali/post-04-fuori-v2", label: "2 / 2 · Finalmente fuori · revisione 2", alt: "Davide finalmente all’aperto, con il carcere infernale alle spalle e i segni della risalita sul volto." },
     ],
   },
 ];
@@ -84,7 +84,7 @@ export default function InstagramPage() {
                 <p className={styles.eyebrow}>Post {post.number} <span>／</span> <time dateTime={post.date}>{post.day}</time></p>
                 <h2 id={`post-${post.number}`}>{post.title}</h2>
                 <p>{post.description}</p>
-                <p className={styles.hint}>{postIndex === 0 ? "Ultima revisione · Da rivedere prima della pubblicazione" : "Prima bozza · Volto e ambientazione da aggiornare"}</p>
+                <p className={styles.hint}>Ultima revisione · Da rivedere prima della pubblicazione</p>
                 {post.images.length > 1 && <p className={styles.hint}>Carosello · 2 immagini</p>}
               </header>
               <div className={styles.images}>

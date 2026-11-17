@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", images: ["/media/materiali/post-01-attuale.webp"] },
 };
 
-function PictureCard({ src, title, label, alt }: { src: string; title: string; label: string; alt?: string }) {
+function PictureCard({ src, title, label, alt, instagram }: { src: string; title: string; label: string; alt?: string; instagram?: string }) {
   return (
     <figure className={styles.card}>
       <a href={`${src}.png`} target="_blank" rel="noopener noreferrer" aria-label={`Apri ${title}`}>
@@ -29,7 +29,7 @@ function PictureCard({ src, title, label, alt }: { src: string; title: string; l
       </a>
       <figcaption>
         <div><span className={styles.eyebrow}>{label}</span><h3>{title}</h3></div>
-        <a href={`${src}.png`} download>PNG ↓</a>
+        <div className={styles.cardDownloads}>{instagram && <a href={instagram} download>JPG per IG ↓</a>}<a href={`${src}.png`} download>PNG ↓</a></div>
       </figcaption>
     </figure>
   );
@@ -95,7 +95,7 @@ export default function MaterialsPage() {
 
         <section id="post-successivi" className={styles.section} aria-labelledby="posts-title">
           <header className={styles.sectionHeading}><div><p className={styles.eyebrow}>Il seguito della storia</p><h2 id="posts-title">Le prossime scene.</h2></div></header>
-          <p className={styles.notice}>Queste sono le prime bozze. Volto, occhiali e ambientazione vanno allineati al primo post aggiornato prima di pubblicarle.</p>
+          <p className={styles.note}>Revisione 2 · Volto e carcere infernale aggiornati. Immagini da rivedere prima della pubblicazione; JPG per Instagram in formato 1080 × 1350.</p>
           <div className={styles.grid}>{nextPostImages.map((picture) => <PictureCard key={picture.src} {...picture} />)}</div>
         </section>
 
@@ -119,14 +119,14 @@ export default function MaterialsPage() {
 
         <section id="archivio" className={styles.section} aria-labelledby="archive-title">
           <header className={styles.sectionHeading}><div><p className={styles.eyebrow}>Per confronto</p><h2 id="archive-title">Le versioni precedenti.</h2></div></header>
-          <details className={styles.archive}><summary>Apri l’archivio · 7 immagini <span aria-hidden="true">+</span></summary><p className={styles.note}>Le prove restano disponibili. La versione attuale per il primo post è quella in apertura.</p><div className={styles.grid}>{previousImages.map((picture) => <PictureCard key={picture.src} {...picture} />)}</div></details>
+          <details className={styles.archive}><summary>Apri l’archivio · {previousImages.length} immagini <span aria-hidden="true">+</span></summary><p className={styles.note}>Le prove e le prime versioni dei post restano disponibili per confronto. Le revisioni attuali sono nelle sezioni precedenti.</p><div className={styles.grid}>{previousImages.map((picture) => <PictureCard key={picture.src} {...picture} />)}</div></details>
         </section>
 
         <section id="direzione" className={`${styles.section} ${styles.direction}`} aria-labelledby="direction-title">
           <div><p className={styles.eyebrow}>La regola comune</p><h2 id="direction-title">Un inferno.<br />Una via d’uscita.</h2><p>Un carcere scavato in una voragine: gironi di pietra, catene, ponti, fuoco dal fondo. Davide resta umano, con i suoi lineamenti, senza occhiali e con i segni del percorso. La luce in alto indica la risalita.</p></div>
           <div><h3>Reel finale · 27 novembre</h3><p>Si apre fuori dal carcere. Poi il flashback: cella, allenamento, featuring, trasformazione, salto. Si torna fuori con la canzone e l’invito all’ascolto.</p><p className={styles.note}>Scaletta pronta; video finale ancora da montare. Titolo ufficiale del singolo e link di ascolto da inserire quando confermati.</p><a className={styles.secondary} href="/media/materiali/testi/storyboard-reel-finale.txt" download>Scarica la scaletta ↓</a></div>
         </section>
-        <footer className={styles.footer}><Link href="/">← Torna al sito</Link><Link href="/ig">Campagna IG ↗</Link><span>Aggiornato il 16 novembre 2026 · Bozze di lavoro</span></footer>
+        <footer className={styles.footer}><Link href="/">← Torna al sito</Link><Link href="/ig">Campagna IG ↗</Link><span>Aggiornato il 17 novembre 2026 · Bozze di lavoro</span></footer>
       </main>
     </>
   );
