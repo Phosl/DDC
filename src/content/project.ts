@@ -5,7 +5,6 @@ export type JourneyChapter = {
   body: string;
   image: string;
   alt: string;
-  tone: "mono" | "magenta" | "cyan";
 };
 
 export type Track = {
@@ -35,30 +34,27 @@ export const navigation = [
 export const journeyChapters: JourneyChapter[] = [
   {
     index: "01",
-    kicker: "Radici",
-    title: "Da dove vieni continua a parlare.",
-    body: "Una stanza, pochi strumenti e tutto quello che serve per trasformare il rumore in voce.",
-    image: "/media/studio-professional.webp",
-    alt: "Home studio professionale di Davide Del Carmen con tastiera MIDI, monitor audio e foto incorniciata di 2Pac",
-    tone: "mono",
+    kicker: "Il fondo",
+    title: "Il cielo è lontano. Ma si vede.",
+    body: "Una cella nel fondo del pozzo. Le ferite restano, la luce in alto indica da dove ricominciare.",
+    image: "/media/materiali/post-01-attuale.webp",
+    alt: "Davide nella cella del carcere infernale, sotto le gallerie illuminate dal fuoco",
   },
   {
     index: "02",
     kicker: "Inferno",
     title: "Il rumore fuori. Quello dentro.",
-    body: "La pressione non diventa scenografia: resta addosso, attraversa i pezzi e cambia forma.",
-    image: "/media/portrait-neon.jpeg",
-    alt: "Davide Del Carmen seduto in un ambiente illuminato di magenta e viola",
-    tone: "magenta",
+    body: "Tra gironi di pietra, catene e ponti sospesi, la voce trova un alleato. DDC × O.G. Eastbull.",
+    image: "/media/materiali/post-02-featuring-v2.webp",
+    alt: "Davide sul ponte del carcere infernale, con l’annuncio del featuring con O.G. Eastbull",
   },
   {
     index: "03",
     kicker: "Risalita",
     title: "Ancora vivo. Più in alto.",
     body: "Ghetto Superstar è il movimento dal fondo verso l’aria, senza cancellare il punto di partenza.",
-    image: "/media/portrait-bw.jpeg",
-    alt: "Primo piano in bianco e nero di Davide Del Carmen",
-    tone: "cyan",
+    image: "/media/materiali/post-04-salto-v2.webp",
+    alt: "Davide salta verso l’uscita, sopra il vuoto del carcere infernale",
   },
 ];
 

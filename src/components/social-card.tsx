@@ -3,9 +3,10 @@ type SocialCardProps = {
   eyebrow: string;
   footer: string;
   title: readonly [string, string];
+  imageSrc?: string;
 };
 
-export function SocialCard({ accent, eyebrow, footer, title }: SocialCardProps) {
+export function SocialCard({ accent, eyebrow, footer, title, imageSrc }: SocialCardProps) {
   return (
     <div
       style={{
@@ -47,6 +48,15 @@ export function SocialCard({ accent, eyebrow, footer, title }: SocialCardProps) 
           borderRadius: "50%",
         }}
       />
+
+      {imageSrc && (
+        <>
+          {/* ImageResponse renders this image server-side. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageSrc} alt="" width={504} height={630} style={{ position: "absolute", top: 0, right: 0, objectFit: "cover" }} />
+          <div style={{ position: "absolute", top: 0, right: 0, width: 620, height: "100%", background: "linear-gradient(90deg, #080808 0%, rgba(8,8,8,0) 35%)" }} />
+        </>
+      )}
 
       <div
         style={{

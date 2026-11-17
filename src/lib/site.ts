@@ -10,12 +10,11 @@ export const siteConfig = {
   gameTitle: "Cantica Zero — Dall’inferno in su",
   gameDescription:
     "Un platform-shooter verticale dal IX al I cerchio: corri, salta sulle pedane, spezza il Rumore con i Versi e raggiungi quota zero.",
-  gameBanner: "/game/posters/cantica-zero-banner-90s.webp",
-  gamePoster: "/game/posters/cantica-zero-90s.webp",
+  gamePoster: "/media/materiali/post-01-attuale.webp",
   socialImageAlt:
     "Ghetto Superstar, progetto musicale di Davide Del Carmen",
   gameSocialImageAlt:
-    "Cantica Zero, il platform-shooter verticale di Davide Del Carmen",
+    "Davide nel carcere infernale di Cantica Zero, il gioco della risalita",
   locale: "it_IT",
   language: "it-IT",
   artistProfiles: {

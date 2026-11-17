@@ -1,4 +1,4 @@
-import { getImageProps } from "next/image";
+import Image from "next/image";
 
 import { siteConfig } from "@/lib/site";
 
@@ -11,37 +11,18 @@ type GameKeyArtProps = {
 export function GameKeyArt({
   className,
   fetchPriority,
-  sizes = "100vw",
+  sizes = "(max-width: 54rem) 100vw, 58vw",
 }: GameKeyArtProps) {
-  const common = {
-    alt: "",
-    fetchPriority,
-    sizes,
-  } as const;
-
-  const {
-    props: { srcSet: desktop },
-  } = getImageProps({
-    ...common,
-    src: siteConfig.gameBanner,
-    width: 1672,
-    height: 941,
-  });
-
-  const {
-    props: { srcSet: mobile, ...imageProps },
-  } = getImageProps({
-    ...common,
-    src: siteConfig.gamePoster,
-    width: 1003,
-    height: 1568,
-  });
-
   return (
-    <picture>
-      <source media="(min-width: 56rem)" srcSet={desktop} />
-      <source media="(max-width: 55.999rem)" srcSet={mobile} />
-      <img {...imageProps} className={className} alt="" />
-    </picture>
+    <Image
+      src={siteConfig.gamePoster}
+      width={1122}
+      height={1402}
+      sizes={sizes}
+      fetchPriority={fetchPriority}
+      loading={fetchPriority === "high" ? "eager" : "lazy"}
+      className={className}
+      alt=""
+    />
   );
 }

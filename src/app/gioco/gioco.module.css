@@ -2,7 +2,7 @@
   --paper: #e7e1d7;
   --black: #080808;
   --ink: #111111;
-  --magenta: #ff2a78;
+  --magenta: #d87a43;
   --magenta-on-paper: #c60050;
   --cyan: #27e0d1;
   --acid: #d7ff46;
@@ -70,12 +70,12 @@
 
 .heroArtworkImage {
   position: absolute;
-  inset: 0;
-  width: 100%;
+  top: 0;
+  right: 0;
+  width: 58%;
   height: 100%;
   object-fit: cover;
   object-position: center;
-  filter: contrast(1.07) saturate(1.04);
 }
 
 .heroArtworkWash {
@@ -83,7 +83,7 @@
   z-index: 1;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(8, 8, 8, 0.98) 0%, rgba(8, 8, 8, 0.88) 29%, rgba(8, 8, 8, 0.38) 50%, transparent 72%),
+    linear-gradient(90deg, #080808 0%, #080808 38%, rgba(8, 8, 8, 0.3) 58%, transparent 72%),
     linear-gradient(180deg, rgba(8, 8, 8, 0.72) 0%, transparent 22%),
     linear-gradient(0deg, rgba(8, 8, 8, 0.72) 0%, transparent 34%);
   pointer-events: none;
@@ -137,7 +137,7 @@
   letter-spacing: -0.085em;
   line-height: 0.7;
   text-transform: uppercase;
-  text-shadow: 0.065em 0.065em 0 rgba(255, 42, 120, 0.28);
+  text-shadow: 0.065em 0.065em 0 rgba(216, 122, 67, 0.2);
 }
 
 .hero h1 > span,
@@ -148,9 +148,7 @@
 .hero h1 em {
   color: var(--magenta);
   font-style: normal;
-  text-shadow:
-    0.045em 0.045em 0 var(--cyan),
-    0.085em 0.085em 0 rgba(244, 240, 232, 0.14);
+  text-shadow: none;
 }
 
 .hero h1 small {
@@ -307,29 +305,38 @@
 }
 
 .outro {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: max(34rem, 72svh);
   padding: clamp(5rem, 10vw, 10rem) clamp(1rem, 5vw, 5rem);
-  background:
-    repeating-linear-gradient(
-      135deg,
-      rgba(8, 8, 8, 0.055) 0,
-      rgba(8, 8, 8, 0.055) 2px,
-      transparent 2px,
-      transparent 8px
-    ),
-    var(--magenta);
-  color: var(--black);
+  background: var(--black);
+  color: #f4f0e8;
+}
+
+.outroImage {
+  z-index: -2;
+  object-fit: cover;
+  object-position: center 45%;
+}
+
+.outro::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, rgba(8, 8, 8, .96), rgba(8, 8, 8, .7) 45%, rgba(8, 8, 8, .24));
 }
 
 .outro .sectionIndex {
-  color: rgba(8, 8, 8, 0.58);
+  color: var(--magenta);
 }
 
 .outro h2 {
   max-width: 12ch;
   margin-bottom: clamp(3rem, 7vw, 6rem);
   font-size: clamp(3.8rem, 10vw, 10rem);
-  text-shadow: 0.055em 0.055em 0 var(--cyan);
+  text-shadow: 0 2px 24px rgba(8, 8, 8, .4);
 }
 
 @media (max-width: 54rem) {
@@ -340,6 +347,7 @@
   }
 
   .heroArtworkImage {
+    width: 100%;
     object-position: 50% 47%;
   }
 
@@ -356,10 +364,14 @@
 
   .heroContent {
     width: min(100%, 44rem);
+    min-height: calc(100svh - 12rem);
+    display: flex;
+    flex-direction: column;
   }
 
   .heroFooter {
     margin-left: 0;
+    margin-top: auto;
   }
 
   .gameSection {

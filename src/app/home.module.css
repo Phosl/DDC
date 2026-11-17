@@ -21,21 +21,20 @@
 }
 
 .heroMedia {
-  left: 36%;
+  left: 48%;
   overflow: hidden;
 }
 
 .heroImage {
   object-fit: cover;
-  object-position: 54% 36%;
-  filter: saturate(0.72) contrast(1.08) brightness(0.82);
+  object-position: 42% 45%;
 }
 
 .heroShade {
   z-index: -2;
   background:
-    linear-gradient(90deg, #080808 0%, rgba(8, 8, 8, 0.96) 26%, rgba(8, 8, 8, 0.38) 63%, rgba(8, 8, 8, 0.25) 100%),
-    linear-gradient(0deg, rgba(8, 8, 8, 0.75) 0%, transparent 48%);
+    linear-gradient(90deg, #080808 0%, #080808 43%, rgba(8, 8, 8, 0.18) 66%, transparent 100%),
+    linear-gradient(0deg, rgba(8, 8, 8, 0.88) 0%, transparent 40%);
 }
 
 .heroContent {
@@ -65,7 +64,7 @@
   margin: 1.15rem 0 1rem;
   color: var(--paper-bright);
   font-family: var(--display);
-  font-size: clamp(4.7rem, 13.5vw, 13.5rem);
+  font-size: clamp(4.7rem, 10vw, 10rem);
   font-stretch: condensed;
   font-weight: 900;
   letter-spacing: -0.095em;
@@ -85,7 +84,7 @@
 }
 
 .titleOffset {
-  margin-left: clamp(1rem, 9vw, 9rem);
+  margin-left: clamp(0.5rem, 2vw, 2rem);
   color: transparent;
   -webkit-text-stroke: max(1px, 0.012em) var(--paper-bright);
 }
@@ -309,18 +308,6 @@
   object-fit: cover;
 }
 
-.chapter_mono .chapterImage {
-  filter: contrast(1.05) saturate(1.04);
-}
-
-.chapter_magenta .chapterImage {
-  filter: saturate(1.28) contrast(1.02);
-}
-
-.chapter_cyan .chapterImage {
-  filter: grayscale(1) contrast(1.18);
-}
-
 .chapterCopy {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -401,7 +388,7 @@
 
 .projectPortrait {
   position: relative;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
   background: #d4d1cb;
 }
@@ -533,12 +520,12 @@
 .gamePosterImage {
   position: absolute;
   z-index: 0;
-  inset: 0;
-  width: 100%;
+  top: 0;
+  right: 0;
+  width: 55%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
-  filter: contrast(1.08) saturate(1.06);
+  object-position: 42% 45%;
 }
 
 .gamePosterWash {
@@ -630,14 +617,13 @@
 
 .footerPortrait {
   position: relative;
-  min-height: 82svh;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
 }
 
 .footerImage {
   object-fit: cover;
-  object-position: 50% 20%;
-  filter: contrast(1.08);
+  object-position: center;
 }
 
 .footerCopy {
@@ -675,13 +661,13 @@
 
 @media (max-width: 900px) {
   .heroMedia {
-    left: 16%;
+    left: 0;
   }
 
   .heroShade {
     background:
-      linear-gradient(90deg, rgba(8, 8, 8, 0.94), rgba(8, 8, 8, 0.22)),
-      linear-gradient(0deg, rgba(8, 8, 8, 0.82) 0%, transparent 58%);
+      linear-gradient(90deg, rgba(8, 8, 8, 0.35), transparent),
+      linear-gradient(0deg, rgba(8, 8, 8, 0.96) 0%, transparent 60%);
   }
 
   .heroBottom,
@@ -700,7 +686,7 @@
   }
 
   .footerPortrait {
-    min-height: 68svh;
+    min-height: 0;
   }
 
   .gameTeaser,
@@ -709,7 +695,8 @@
   }
 
   .gamePosterImage {
-    object-position: 50% 48%;
+    width: 100%;
+    object-position: 42% 45%;
   }
 
   .gamePosterWash {
@@ -730,13 +717,13 @@
   }
 
   .heroImage {
-    object-position: 58% 42%;
+    object-position: 42% 45%;
   }
 
   .heroShade {
     background:
-      linear-gradient(90deg, rgba(8, 8, 8, 0.7), rgba(8, 8, 8, 0.08)),
-      linear-gradient(0deg, rgba(8, 8, 8, 0.97) 0%, rgba(8, 8, 8, 0.24) 62%);
+      linear-gradient(180deg, rgba(8, 8, 8, 0.3), transparent 30%),
+      linear-gradient(0deg, rgba(8, 8, 8, 0.97) 0%, transparent 65%);
   }
 
   .heroOrbit {
@@ -857,7 +844,7 @@
   }
 
   .footerPortrait {
-    min-height: 70svh;
+    min-height: 0;
   }
 
   .footerCopy {

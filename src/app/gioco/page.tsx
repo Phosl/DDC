@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import { GameKeyArt } from "@/components/game-key-art";
@@ -142,6 +143,7 @@ export default function GamePage() {
         </section>
 
         <section className={styles.outro} aria-labelledby="outro-title">
+          <Image src="/media/materiali/post-04-fuori-v2.webp" alt="" fill sizes="100vw" className={styles.outroImage} />
           <p className={styles.sectionIndex}>02 / FUORI DALLA SELVA</p>
           <h2 id="outro-title">E quindi uscimmo a riveder le stelle.</h2>
           <Link href="/">Torna al viaggio</Link>

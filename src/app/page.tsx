@@ -38,7 +38,7 @@ const homeStructuredData = {
       alternateName: siteConfig.artistAlternateName,
       description: `Artista e autore del progetto musicale ${siteConfig.projectName}.`,
       url: absoluteUrl(),
-      image: absoluteUrl("/media/hero-editorial.jpeg"),
+      image: absoluteUrl("/media/materiali/post-01-attuale.webp"),
       sameAs: [siteConfig.artistProfiles.spotify],
     },
     {
@@ -47,7 +47,7 @@ const homeStructuredData = {
       name: siteConfig.projectName,
       description: siteConfig.description,
       url: absoluteUrl("/#progetto"),
-      image: absoluteUrl("/media/portrait-full.jpeg"),
+      image: absoluteUrl("/media/materiali/post-03-trasformazione-v2.webp"),
       inLanguage: siteConfig.language,
       creator: {
         "@id": absoluteUrl("/#artist"),
@@ -89,11 +89,11 @@ export default function HomePage() {
 
         <div className={styles.heroMedia} data-hero-image>
           <Image
-            src="/media/hero-editorial.jpeg"
-            alt="Ritratto editoriale di Davide Del Carmen"
+            src="/media/materiali/post-01-attuale.webp"
+            alt="Davide Del Carmen senza occhiali, ferito ma determinato, nella cella del carcere infernale"
             fill
             priority
-            sizes="100vw"
+            sizes="(max-width: 900px) 100vw, 52vw"
             className={styles.heroImage}
           />
         </div>
@@ -174,7 +174,7 @@ export default function HomePage() {
         <div className={styles.chapterList}>
           {journeyChapters.map((chapter) => (
             <article
-              className={`${styles.chapter} ${styles[`chapter_${chapter.tone}`]}`}
+              className={styles.chapter}
               key={chapter.index}
             >
               <div className={styles.chapterImageWrap} data-chapter-image>
@@ -216,8 +216,8 @@ export default function HomePage() {
         <div className={styles.projectGrid}>
           <div className={styles.projectPortrait} data-chapter-image>
             <Image
-              src="/media/portrait-full.jpeg"
-              alt="Davide Del Carmen in abbigliamento nero su fondo grigio"
+              src="/media/materiali/post-03-trasformazione-v2.webp"
+              alt="La trasformazione di Davide in Ghetto Superstar, tra le gallerie del carcere infernale"
               fill
               sizes="(max-width: 768px) 100vw, 38vw"
               className={styles.projectImage}
@@ -284,8 +284,8 @@ export default function HomePage() {
       <footer className={styles.footer}>
         <div className={styles.footerPortrait}>
           <Image
-            src="/media/portrait-bw.jpeg"
-            alt="Davide Del Carmen"
+            src="/media/materiali/post-04-fuori-v2.webp"
+            alt="Davide finalmente fuori dal carcere infernale, sotto il cielo aperto"
             fill
             sizes="(max-width: 768px) 100vw, 42vw"
             className={styles.footerImage}

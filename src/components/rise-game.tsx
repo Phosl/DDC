@@ -3,6 +3,7 @@
 import {useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react'
 import {useGSAP} from '@gsap/react'
 import gsap from 'gsap'
+import Image from 'next/image'
 import Link from 'next/link'
 
 import type {AimVector, GameController, GameEvent, GamePhase, GameSnapshot} from '@/lib/rise-game'
@@ -1030,6 +1031,23 @@ export function RiseGame() {
         </div>
 
         <p className={styles.rotateNote}>Ruota il telefono per giocare meglio in verticale.</p>
+
+        {!isPlaying || runtimeState !== 'ready' ? (
+          <div className={styles.overlayArtwork} aria-hidden="true" data-testid="rise-game-scene">
+            <Image
+              src={phase === 'complete'
+                ? '/media/materiali/post-04-fuori-v2.webp'
+                : phase === 'paused'
+                  ? '/media/materiali/post-03-trasformazione-v2.webp'
+                  : '/media/materiali/post-01-attuale.webp'}
+              alt=""
+              fill
+              sizes="(min-width: 64rem) 50vw, 480px"
+              unoptimized
+              className={styles.overlayArtworkImage}
+            />
+          </div>
+        ) : null}
 
       {runtimeState === 'loading' ? (
         <div className={`${styles.overlay} ${styles.introOverlay}`} ref={overlayRef}>
