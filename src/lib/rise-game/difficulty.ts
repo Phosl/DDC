@@ -167,7 +167,7 @@ export const DIFFICULTY_TUNING = {
       maxFallVelocity: 460,
       coyoteMs: 200,
       jumpBufferMs: 220,
-      jumpCutMultiplier: 0.78,
+      jumpCutMultiplier: 1,
       invulnerableMs: 2_400,
     },
     mechanics: {

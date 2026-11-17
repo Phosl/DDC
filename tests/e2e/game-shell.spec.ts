@@ -11,6 +11,8 @@ async function readTelemetry(page: Page) {
 test.describe("Cantica Zero game shell", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/gioco");
+    // Preserve coverage of the variable jump and combat balance in Standard.
+    await page.getByRole("button", { name: "Facile on", exact: true }).click();
   });
 
   test("mounts exactly one game canvas and exposes the arcade controls", async ({ page }) => {

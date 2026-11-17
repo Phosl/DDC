@@ -19,6 +19,7 @@ import {
   CIRCLE_LEVELS,
   LEVEL_HEIGHT,
   assertValidCircleLevels,
+  getCircleForWorldY,
   getLevelWorldOffsetY,
   type CircleLevelDefinition,
 } from './level-data'
@@ -44,6 +45,7 @@ import type {
   GameSnapshot,
   GameTelemetry,
 } from './types'
+import {INITIAL_GAME_INPUT} from './types'
 import {
   createBossVisualController,
   createEnemyVisualController,
@@ -366,7 +368,6 @@ export function createAscentScene(
     private backgroundSeams = new Set<Phaser.GameObjects.Graphics>()
     private spiralForeground = new Set<Phaser.GameObjects.Rectangle>()
     private adaptiveStaticGeometry = new Set<AdaptiveStaticGeometry>()
-    private lastMovingPlatform: Phaser.GameObjects.GameObject | null = null
     private playerFacingDirection: -1 | 1 = 1
     private assetLoadFailed = false
     private viewportWidth = GAME_WIDTH
@@ -435,7 +436,6 @@ export function createAscentScene(
       this.backgroundSeams.clear()
       this.spiralForeground.clear()
       this.adaptiveStaticGeometry.clear()
-      this.lastMovingPlatform = null
       this.assetLoadFailed = false
       this.viewportWidth = Math.max(GAME_WIDTH, bridge.viewportWidth)
       this.viewportHeight = Math.max(1, bridge.viewportHeight)
@@ -610,12 +610,25 @@ export function createAscentScene(
       this.recordEligible = false
       this.lives = 3
       this.phase = 'playing'
+      this.phaseBeforePause = 'playing'
+      this.time.paused = false
       this.statusText = 'La salita continua — fuori classifica'
       this.resetAllCrumblePlatforms()
+      bridge.input = {...INITIAL_GAME_INPUT}
       bridge.desiredRunning = true
       this.physics.resume()
-      this.respawnAtActCheckpoint()
-      this.emitAnnouncement("Continui dall'inizio dell'Atto. Record disattivato.")
+      if (bridge.assist) this.respawnAfterDamage()
+      else this.respawnAtActCheckpoint()
+      this.clearThreatsNearRespawn()
+      this.playerVisual?.resume()
+      this.enemyVisuals.forEach((visual) => visual.resume())
+      this.bossVisuals.forEach((visual) => visual.resume())
+      this.vfx?.resume()
+      this.emitAnnouncement(
+        bridge.assist
+          ? 'Riparti dalla pedana sicura. La salita continua, fuori classifica.'
+          : "Continui dall'inizio dell'Atto. Record disattivato.",
+      )
       this.emitSnapshot(true)
     }
 
@@ -1302,8 +1315,6 @@ export function createAscentScene(
         originY: y,
         direction: axis === 'x' ? 1 : -1,
         range: axis === 'x' ? platformTuning.horizontalRange : platformTuning.verticalRange,
-        lastX: x,
-        lastY: y,
         tuningMode: bridge.assist ? 'assist' : 'standard',
       })
       if (authoredVisual) {
@@ -1469,12 +1480,16 @@ export function createAscentScene(
       this.physics.add.collider(this.player, this.staticPlatforms, (_player, platform) => {
         if (isBodyObject(platform)) this.rememberStableSpawn(platform)
       })
-      this.physics.add.collider(this.player, this.movingPlatforms, (_player, platform) => {
-        if (isBodyObject(platform)) {
-          this.lastMovingPlatform = platform
-          this.rememberStableSpawn(platform)
-        }
-      })
+      this.physics.add.collider(
+        this.player,
+        this.movingPlatforms,
+        (_player, platform) => {
+          if (isBodyObject(platform)) {
+            this.rememberStableSpawn(platform)
+          }
+        },
+        (player, platform) => this.shouldCollideOneWay(player, platform),
+      )
       this.physics.add.collider(
         this.player,
         this.oneWayPlatforms,
@@ -1483,11 +1498,18 @@ export function createAscentScene(
         },
         (player, platform) => this.shouldCollideOneWay(player, platform),
       )
-      this.physics.add.collider(this.player, this.crumblePlatforms, (_player, platform) => {
-        if (isBodyObject(platform)) this.armCrumblePlatform(platform)
-      })
+      this.physics.add.collider(
+        this.player,
+        this.crumblePlatforms,
+        (_player, platform) => {
+          if (isBodyObject(platform)) this.armCrumblePlatform(platform)
+        },
+        (player, platform) => this.shouldCollideOneWay(player, platform),
+      )
       this.physics.add.collider(this.enemies, this.staticPlatforms)
-      this.physics.add.collider(this.enemies, this.oneWayPlatforms, undefined, (enemy, platform) =>
+      // Arcade expands the plain platform group, so its sprite comes first
+      // when colliding it against the enemy physics group.
+      this.physics.add.collider(this.oneWayPlatforms, this.enemies, undefined, (platform, enemy) =>
         this.shouldCollideOneWay(enemy, platform),
       )
       this.physics.add.overlap(this.player, this.enemies, () => this.takeDamage('Rumore'))
@@ -1773,8 +1795,6 @@ export function createAscentScene(
         const velocity = delta > 0 ? ((next.position - coordinate) * 1_000) / delta : 0
         if (axis === 'x') body.setVelocity(velocity, 0)
         else body.setVelocity(0, velocity)
-        child.setData('lastX', child.x)
-        child.setData('lastY', child.y)
         const visual = child.getData('visual') as Phaser.GameObjects.Image | undefined
         if (visual?.active) visual.setPosition(child.x, child.y - 2)
       })
@@ -1831,14 +1851,6 @@ export function createAscentScene(
         } else {
           this.player.setAlpha(1).clearTint()
         }
-        if (this.lastMovingPlatform && isBodyObject(this.lastMovingPlatform)) {
-          const platform = this.lastMovingPlatform
-          const lastX = platform.getData('lastX') as number | undefined
-          const lastY = platform.getData('lastY') as number | undefined
-          if (lastX !== undefined) this.player.x += platform.x - lastX
-          if (lastY !== undefined) this.player.y += platform.y - lastY
-        }
-        this.lastMovingPlatform = null
         this.updatePlayerAnimation(time, false)
         if (this.player.y > this.cameras.main.scrollY + this.viewportHeight + 68) {
           this.takeDamage('Caduta', true)
@@ -1943,15 +1955,6 @@ export function createAscentScene(
       } else {
         this.player.setAlpha(1).clearTint()
       }
-
-      if (this.lastMovingPlatform && grounded && isBodyObject(this.lastMovingPlatform)) {
-        const platform = this.lastMovingPlatform
-        const lastX = platform.getData('lastX') as number | undefined
-        const lastY = platform.getData('lastY') as number | undefined
-        if (lastX !== undefined) this.player.x += platform.x - lastX
-        if (lastY !== undefined) this.player.y += platform.y - lastY
-      }
-      this.lastMovingPlatform = null
 
       this.updatePlayerAnimation(time, grounded && !jumpFrame.jumped)
       if (this.player.y > this.cameras.main.scrollY + this.viewportHeight + 68) {
@@ -2635,7 +2638,9 @@ export function createAscentScene(
     }
 
     private respawnAfterDamage() {
-      this.placePlayerAtSpawn(this.getDamageRespawnSpawn())
+      const spawn = this.getDamageRespawnSpawn()
+      this.currentCircleIndex = getCircleForWorldY(spawn.y).orderFromBottom
+      this.placePlayerAtSpawn(spawn)
     }
 
     private placePlayerAtSpawn(spawn: Phaser.Math.Vector2) {

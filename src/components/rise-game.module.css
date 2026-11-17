@@ -347,6 +347,11 @@
   gap: 0.38rem;
 }
 
+.actionPad {
+  grid-template-columns: auto auto;
+  align-items: end;
+}
+
 .touchControls button {
   display: grid;
   min-width: 3.3rem;
@@ -361,8 +366,9 @@
   pointer-events: auto;
 }
 
-.jumpButton {
-  min-width: 3.8rem;
+.touchControls .jumpButton {
+  min-width: 4rem;
+  min-height: 4.85rem;
   border-color: var(--game-acid);
   color: var(--game-acid);
   font-size: 0.52rem;
@@ -883,6 +889,17 @@
 
   .chapter {
     font-size: 0.43rem;
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  .stage {
+    width: min(100%, calc((100svh - 18rem) * 4 / 7));
+    margin-inline: auto;
+  }
+
+  .game {
+    scroll-margin-top: 0.5rem;
   }
 }
 

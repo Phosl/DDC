@@ -82,7 +82,7 @@ export async function createRiseGame(options: CreateRiseGameOptions): Promise<Ga
 
   const bridge: RuntimeBridge = {
     input: {...INITIAL_GAME_INPUT},
-    assist: options.assist ?? false,
+    assist: options.assist ?? true,
     reducedMotion: options.reducedMotion ?? false,
     actorScale: Math.max(1, options.actorScale ?? 1),
     viewportWidth: GAME_WIDTH,

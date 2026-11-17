@@ -113,8 +113,8 @@ export default function GamePage() {
                 <span>01</span>
                 <p>
                   <strong>Muoviti e salta</strong>
-                  Usa A/D o le frecce per correre. W, Freccia su o Spazio
-                  controllano altezza e ritmo del salto.
+                  Usa A/D o le frecce per correre. In modalità facile basta un tocco
+                  su Spazio, W o Salta. Sul telefono: movimento a sinistra, salto a destra.
                 </p>
               </li>
               <li>
@@ -131,7 +131,8 @@ export default function GamePage() {
                 <p>
                   <strong>Spezza il rumore</strong>
                   I Versi aprono la strada e consumano FIATO. Raccogli Voce,
-                  Rima e Luce; tre vite ti separano dall’ultimo checkpoint.
+                  Rima e Luce. In modalità facile riprendi dalla pedana sicura,
+                  anche quando esaurisci le tre vite.
                 </p>
               </li>
             </ol>

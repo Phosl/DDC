@@ -195,6 +195,44 @@ describe("jump rules", () => {
     ).toBeGreaterThan(48);
     expect(fullRise(assist.jumpVelocity, assist.gravity)).toBeGreaterThan(96);
   });
+
+  it("gives an assisted tap the same full arc as a held jump, while Standard stays variable", () => {
+    const simulateRise = (assist: boolean, releaseAfterMs: number) => {
+      const tuning = assist ? DIFFICULTY_TUNING.assist.player : DIFFICULTY_TUNING.standard.player;
+      let state = INITIAL_JUMP_WINDOW_STATE;
+      let velocityY = 0;
+      let y = 0;
+      let highestY = 0;
+      const stepMs = 1_000 / 120;
+      for (let frame = 0; frame < 180; frame += 1) {
+        const nowMs = frame * stepMs;
+        const jump = resolveJumpFrame({
+          state,
+          nowMs,
+          grounded: frame === 0,
+          jumpPressed: frame === 0,
+          jumpHeld: nowMs < releaseAfterMs,
+          velocityY,
+          coyoteMs: tuning.coyoteMs,
+          jumpBufferMs: tuning.jumpBufferMs,
+          jumpVelocity: tuning.jumpVelocity,
+          cutMultiplier: tuning.jumpCutMultiplier,
+        });
+        state = jump.state;
+        velocityY = jump.velocityY + tuning.gravity * stepMs / 1_000;
+        y += velocityY * stepMs / 1_000;
+        highestY = Math.min(highestY, y);
+      }
+      return -highestY;
+    };
+
+    const assistedHeld = simulateRise(true, Infinity);
+    expect(simulateRise(true, 0)).toBeCloseTo(assistedHeld, 8);
+    expect(simulateRise(true, 40)).toBeCloseTo(assistedHeld, 8);
+    expect(assistedHeld).toBeGreaterThan(96);
+    expect(simulateRise(false, 0)).toBeLessThan(64);
+    expect(simulateRise(false, Infinity)).toBeGreaterThan(90);
+  });
 });
 
 describe("Verse and FIATO rules", () => {

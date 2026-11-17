@@ -225,12 +225,12 @@ export function RiseGame() {
   const [runtimeState, setRuntimeState] = useState<RuntimeState>('loading')
   const [runtimeError, setRuntimeError] = useState('')
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null)
-  const [assist, setAssist] = useState(false)
+  const [assist, setAssist] = useState(true)
   const [debugFly, setDebugFlyState] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [audioAvailable, setAudioAvailable] = useState(true)
   const [announcement, setAnnouncement] = useState(
-    'Cantica Zero pronta. Su desktop mira col mouse e tieni premuto il click; su touch usa i due stick dedicati.',
+    'Cantica Zero pronta in modalità facile. Un tocco per saltare; sul telefono muovi a sinistra e salta a destra.',
   )
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [nickname, setNickname] = useState(FALLBACK_NICKNAME)
@@ -431,7 +431,12 @@ export function RiseGame() {
       setAudioAvailable(available)
     }
     setAnnouncement('La risalita continua.')
-    window.requestAnimationFrame(() => stageRef.current?.focus({preventScroll: true}))
+    window.requestAnimationFrame(() => {
+      if (window.matchMedia('(pointer: coarse)').matches) {
+        rootRef.current?.scrollIntoView({block: 'start', behavior: 'instant'})
+      }
+      stageRef.current?.focus({preventScroll: true})
+    })
   }, [])
 
   const setGamepadMove = useCallback(
@@ -732,7 +737,12 @@ export function RiseGame() {
         ? 'Schermo intero attivo. Canto IX, Giudecca. Premi Escape per uscire e mettere in pausa.'
         : 'Canto IX. Giudecca. La risalita comincia.',
     )
-    window.requestAnimationFrame(() => stageRef.current?.focus({preventScroll: true}))
+    window.requestAnimationFrame(() => {
+      if (!enteredFullscreen && window.matchMedia('(pointer: coarse)').matches) {
+        rootRef.current?.scrollIntoView({block: 'start', behavior: 'instant'})
+      }
+      stageRef.current?.focus({preventScroll: true})
+    })
   }
 
   const restartGame = (mode: 'full-run' | 'continue-act') => {
@@ -758,8 +768,8 @@ export function RiseGame() {
     controllerRef.current?.setAssist(nextAssist)
     setAnnouncement(
       nextAssist
-        ? 'Modalità Assistita attiva: appigli più generosi e Rumore più lento.'
-        : 'Modalità Standard attiva.',
+        ? 'Modalità facile: salto completo con un tocco e ripartenza dalla pedana sicura.'
+        : 'Modalità Standard: tieni premuto per saltare più in alto. Ripartenza dall’Atto.',
     )
   }
 
@@ -915,7 +925,7 @@ export function RiseGame() {
           aria-pressed={assist}
           disabled={!canChangeMode || runtimeState !== 'ready'}
           onClick={toggleAssist}>
-          Assistita {assist ? 'on' : 'off'}
+          Facile {assist ? 'on' : 'off'}
         </button>
         <button
           type="button"
@@ -1081,14 +1091,16 @@ export function RiseGame() {
             <p className={styles.kicker}>CANTICA ZERO / IX → I</p>
             <h3>Dal fondo alle stelle.</h3>
             <p className={styles.overlayCopy}>
-              Corri, salta e mira a 360°: mouse e click su desktop, due stick dedicati su touch. Tre
-              vite, tre Atti, nove cerchi.
+              Sali di pedana in pedana mentre ascolti il brano. Sul telefono: movimento a sinistra,
+              salto a destra. Usa la mira per liberare la strada.
             </p>
             <button className={styles.primaryButton} type="button" onClick={startGame}>
               Inizia la Cantica
             </button>
             <p className={styles.modeNote}>
-              {assist ? 'Assistita · record separato' : 'Standard · record completo'}
+              {assist
+                ? 'Facile · un tocco per saltare · riparti dalla pedana sicura'
+                : 'Standard · tieni premuto per saltare più in alto'}
             </p>
           </div>
         </div>
@@ -1136,13 +1148,15 @@ export function RiseGame() {
               {formatTime(snapshot?.elapsedMs)} · {snapshot?.voices ?? 0} VOCI
             </p>
             <p className={styles.overlayCopy}>
-              Continua dall’Atto senza record, oppure riparti da Giudecca con una run pulita.
+              {assist
+                ? 'La salita non è persa: riprendi dalla pedana sicura con tre vite. Il record resta disattivato.'
+                : 'Continua dall’Atto senza record, oppure riparti da Giudecca con una run pulita.'}
             </p>
             <button
               className={styles.primaryButton}
               type="button"
               onClick={() => restartGame('continue-act')}>
-              Continua dall’Atto
+              {assist ? 'Riprendi da qui' : 'Continua dall’Atto'}
             </button>
             <button
               className={styles.secondaryButton}
@@ -1209,13 +1223,6 @@ export function RiseGame() {
             disabled={phase !== 'playing'}
             onMoveChange={setTouchMove}
           />
-          <button
-            className={styles.jumpButton}
-            type="button"
-            aria-label="Salta"
-            {...bindPointer('jump')}>
-            SALTA
-          </button>
         </div>
         <div className={styles.actionPad}>
           <AimJoystick
@@ -1223,6 +1230,13 @@ export function RiseGame() {
             disabled={phase !== 'playing'}
             onAimChange={setTouchAim}
           />
+          <button
+            className={styles.jumpButton}
+            type="button"
+            aria-label="Salta"
+            {...bindPointer('jump')}>
+            SALTA
+          </button>
         </div>
       </div>
 
