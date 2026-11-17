@@ -24,6 +24,7 @@ export const nextPostImages = [
 ] as const;
 
 export const previousImages = [
+  { src: "/media/materiali/post-01-v8", title: "Il ritratto naturale", label: "Versione 8" },
   { src: "/media/materiali/post-01-v7", title: "Volto frontale", label: "Versione 7" },
   { src: "/media/materiali/post-01-v6", title: "Prime reference del viso", label: "Versione 6" },
   { src: "/media/materiali/post-01-v5", title: "Il carcere infernale", label: "Versione 5" },

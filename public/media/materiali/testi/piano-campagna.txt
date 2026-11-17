@@ -7,9 +7,9 @@ SEQUENZA: POST, REEL, POST, POST, POST, REEL
 Primo post il 17 novembre. Le date intermedie restano una proposta.
 
 17 NOVEMBRE — POST 01 / IL FONDO
-Immagine: Davide in cella, senza occhiali, con lievi segni sul volto. Carcere infernale, gironi e luce lontana.
+Immagine: Davide in cella, senza occhiali, con lievi segni sul volto e abiti consumati con piccoli strappi credibili. Carcere infernale, gironi e luce lontana.
 File attuale: post-01-instagram.jpg (1080 × 1350) oppure post-01-attuale.png.
-Stato: versione 8 da rivedere prima di pubblicare. Caption nel file primo-post-caption.txt.
+Stato: versione 9 da rivedere prima di pubblicare. Caption nel file primo-post-caption.txt.
 Invito: entra nel gioco dal link in bio.
 Link: https://ghetto-superstar-ddc.vercel.app/gioco?utm_source=instagram&utm_medium=social&utm_campaign=risalita&utm_content=post01#partita
 

@@ -27,4 +27,4 @@ MONTAGGIO
 Formato verticale 1080 × 1920. Scorrimento e cambi di scala delle foto, dettagli alternati a immagini piene, cornici e passaggi da vignetta. Stile fumetto nelle transizioni, mantenendo coerenti volto, abiti e ambientazione.
 La reference riguarda il montaggio delle immagini. Non serve simulare un movimento continuo del personaggio.
 Scegliere il frammento musicale ascoltando il master e verificando l'ingresso della voce di O.G. Eastbull. Non fissare un timecode non verificato.
-Usare il primo post v8 e le revisioni 2 dei post featuring, trasformazione, salto e fuori. Le immagini dell'allenamento conservano il vecchio look e vanno aggiornate prima di montare il reel finale. Inserire titolo ufficiale e link d'ascolto quando confermati.
+Usare il primo post v9 e le revisioni 2 dei post featuring, trasformazione, salto e fuori. Le immagini dell'allenamento conservano il vecchio look e vanno aggiornate prima di montare il reel finale. Inserire titolo ufficiale e link d'ascolto quando confermati.

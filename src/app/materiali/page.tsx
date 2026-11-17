@@ -56,14 +56,14 @@ export default function MaterialsPage() {
         <section id="primo-post" className={styles.first} aria-labelledby="first-title">
           <div className={styles.firstImage}>
             <a href="/media/materiali/post-01-attuale.png" target="_blank" rel="noopener noreferrer" aria-label="Apri il primo post, versione attuale">
-              <Image src="/media/materiali/post-01-attuale.webp" alt="Davide senza occhiali, con lievi segni sul volto, seduto nella cella di un carcere infernale. Gironi, ponti e un fiume di fuoco alle spalle; una luce lontana in alto." width={1122} height={1402} unoptimized loading="eager" />
+              <Image src="/media/materiali/post-01-attuale.webp" alt="Davide senza occhiali, con lievi segni sul volto e abiti consumati con piccoli strappi, seduto nella cella di un carcere infernale. Gironi, ponti e un fiume di fuoco alle spalle; una luce lontana in alto." width={1122} height={1402} unoptimized loading="eager" />
             </a>
-            <p className={styles.note}>Ultima revisione · Versione 8 · Da rivedere prima della pubblicazione</p>
+            <p className={styles.note}>Ultima revisione · Versione 9 · Da rivedere prima della pubblicazione</p>
           </div>
           <div className={styles.firstInfo}>
             <p className={styles.eyebrow}>Post 01 / <time dateTime="2026-11-17">17 novembre 2026</time></p>
             <h2 id="first-title">Il fondo.<br />L’inizio della risalita.</h2>
-            <p>Davide in cella, nel carcere-pozzo infernale. Il volto aggiornato, i segni della sua storia, la luce ancora lontana.</p>
+            <p>Davide in cella, nel carcere-pozzo infernale. I segni della sua storia sul volto e sugli abiti consumati, la luce ancora lontana.</p>
             <div className={styles.actions}>
               <a className={styles.primary} href="/media/materiali/post-01-instagram.jpg" download>Scarica per Instagram ↓</a>
               <a className={styles.secondary} href="/media/materiali/post-01-attuale.png" download>PNG originale ↓</a>
