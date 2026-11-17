@@ -7,9 +7,9 @@ SEQUENZA: POST, REEL, POST, POST, POST, REEL
 Primo post il 17 novembre. Le date intermedie restano una proposta.
 
 17 NOVEMBRE — POST 01 / IL FONDO
-Immagine: Davide in cella, senza occhiali, con lievi segni sul volto e abiti consumati con piccoli strappi credibili. Carcere infernale, gironi e luce lontana.
+Immagine: Davide in cella, senza occhiali, con lievi segni sul volto e abiti vissuti con strappi molto contenuti e tatuaggi aggiornati dalle foto di riferimento. Carcere infernale, gironi e luce lontana.
 File attuale: post-01-instagram.jpg (1080 × 1350) oppure post-01-attuale.png.
-Stato: versione 9 da rivedere prima di pubblicare. Caption nel file primo-post-caption.txt.
+Stato: versione 10 da rivedere prima di pubblicare. Caption nel file primo-post-caption.txt.
 Invito: entra nel gioco dal link in bio.
 Link: https://ghetto-superstar-ddc.vercel.app/gioco?utm_source=instagram&utm_medium=social&utm_campaign=risalita&utm_content=post01#partita
 
@@ -22,22 +22,22 @@ Invito: prova la risalita dal link in bio.
 
 20 NOVEMBRE — POST 02 / IL FEATURING
 Il carcere si apre alla vista: gallerie, ponti, reparti. Annuncio del featuring con O.G. Eastbull.
-File attuale: post-02-featuring-v2-instagram.jpg (1080 × 1350) oppure post-02-featuring-v2.png.
-Stato: revisione 2 con volto e carcere infernale aggiornati, da rivedere prima di pubblicare.
+File attuale: post-02-featuring-v3-instagram.jpg (1080 × 1350) oppure post-02-featuring-v3.png.
+Stato: revisione 3 con abiti vissuti e tatuaggi aggiornati coerenti con il primo post, mantenendo volto e carcere infernale, da rivedere prima di pubblicare.
 Testo proposto: «La risalita continua. DDC × O.G. Eastbull. 27 novembre.»
 Invito: salva la data.
 
 23 NOVEMBRE — POST 03 / LA TRASFORMAZIONE
 Davide diventa Ghetto Superstar. Le cicatrici restano; cambiano la postura e la luce.
-File attuale: post-03-trasformazione-v2-instagram.jpg (1080 × 1350) oppure post-03-trasformazione-v2.png.
-Stato: revisione 2 con volto e carcere infernale aggiornati, da rivedere prima di pubblicare.
+File attuale: post-03-trasformazione-v3-instagram.jpg (1080 × 1350) oppure post-03-trasformazione-v3.png.
+Stato: revisione 3 con abiti vissuti e tatuaggi aggiornati coerenti con il primo post, mantenendo volto e carcere infernale, da rivedere prima di pubblicare.
 Testo proposto: «Porto fuori anche quello che mi è rimasto addosso.»
 Invito: segui l'ultimo tratto della risalita.
 
 25 NOVEMBRE — POST 04 / IL SALTO
 Carosello: il salto, poi finalmente fuori. Il punto più alto della storia prima dell'uscita.
-File attuali: post-04-salto-v2-instagram.jpg e post-04-fuori-v2-instagram.jpg (1080 × 1350); disponibili anche i PNG con gli stessi nomi senza il suffisso -instagram.
-Stato: due immagini in revisione 2 con volto e carcere infernale aggiornati, da rivedere prima di pubblicare.
+File attuali: post-04-salto-v3-instagram.jpg e post-04-fuori-v3-instagram.jpg (1080 × 1350); disponibili anche i PNG con gli stessi nomi senza il suffisso -instagram.
+Stato: due immagini in revisione 3 con abiti vissuti e tatuaggi aggiornati coerenti con il primo post, mantenendo volto e carcere infernale, da rivedere prima di pubblicare.
 Testo proposto: «Il fondo lo conosco. Adesso guardo fuori. Mancano due giorni.»
 Invito: appuntamento il 27 novembre.
 
@@ -47,6 +47,6 @@ Stato: scaletta disponibile; video ancora da montare.
 Invito: ascolta il brano. Inserire titolo ufficiale e link quando confermati.
 
 REGOLE VISIVE
-Davide riconoscibile dalle foto di riferimento, capelli scuri corti, barba leggera, senza occhiali nelle scene iniziali. Taglio lieve sulla fronte e segno sullo zigomo sinistro. Abiti scuri consumati.
+Davide riconoscibile dalle foto di riferimento, capelli scuri corti, barba leggera, senza occhiali nelle scene iniziali. Taglio lieve sulla fronte e segno sullo zigomo sinistro. Maglietta nera e jeans grigi consumati, con gli stessi strappi molto contenuti nelle diverse scene. Tatuaggi ripresi dalle foto di riferimento: motivo colorato sul braccio sinistro, diamante e motivi scuri sul destro.
 Un solo mondo: carcere verticale fantasy, pietra, sbarre, catene, gironi, ponti, fuoco in profondità, uscita illuminata in alto. Ferite sobrie, personaggio sempre al centro.
 Le frasi proposte sono copy della campagna: non sono citazioni verificate del brano.

@@ -45,7 +45,7 @@ export const journeyChapters: JourneyChapter[] = [
     kicker: "Inferno",
     title: "Il rumore fuori. Quello dentro.",
     body: "Tra gironi di pietra, catene e ponti sospesi, la voce trova un alleato. DDC × O.G. Eastbull.",
-    image: "/media/materiali/post-02-featuring-v2.webp",
+    image: "/media/materiali/post-02-featuring-v3.webp",
     alt: "Davide sul ponte del carcere infernale, con l’annuncio del featuring con O.G. Eastbull",
   },
   {
@@ -53,7 +53,7 @@ export const journeyChapters: JourneyChapter[] = [
     kicker: "Risalita",
     title: "Ancora vivo. Più in alto.",
     body: "Ghetto Superstar è il movimento dal fondo verso l’aria, senza cancellare il punto di partenza.",
-    image: "/media/materiali/post-04-salto-v2.webp",
+    image: "/media/materiali/post-04-salto-v3.webp",
     alt: "Davide salta verso l’uscita, sopra il vuoto del carcere infernale",
   },
 ];

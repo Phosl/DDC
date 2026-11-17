@@ -37,7 +37,7 @@ const posts = [
     day: "20 novembre",
     title: "L’incontro",
     description: "DDC × O.G. Eastbull. Il featuring, dentro la storia.",
-    images: [{ src: "/media/materiali/post-02-featuring-v2", label: "Il featuring · revisione 2", alt: "Davide nel carcere infernale, con il volto aggiornato. Annuncio DDC × O.G. Eastbull, 27 novembre." }],
+    images: [{ src: "/media/materiali/post-02-featuring-v3", label: "Il featuring · revisione 3", alt: "Davide nel carcere infernale, con il volto aggiornato. Annuncio DDC × O.G. Eastbull, 27 novembre." }],
   },
   {
     number: "03",
@@ -45,7 +45,7 @@ const posts = [
     day: "23 novembre",
     title: "La trasformazione",
     description: "Le origini restano. Cambia lo sguardo.",
-    images: [{ src: "/media/materiali/post-03-trasformazione-v2", label: "Ghetto Superstar · revisione 2", alt: "Davide con il volto aggiornato e i segni del percorso si trasforma in Ghetto Superstar nel carcere infernale." }],
+    images: [{ src: "/media/materiali/post-03-trasformazione-v3", label: "Ghetto Superstar · revisione 3", alt: "Davide con il volto aggiornato e i segni del percorso si trasforma in Ghetto Superstar nel carcere infernale." }],
   },
   {
     number: "04",
@@ -54,8 +54,8 @@ const posts = [
     title: "Il salto",
     description: "Il salto non cancella il fondo. Ti porta fuori.",
     images: [
-      { src: "/media/materiali/post-04-salto-v2", label: "1 / 2 · Il salto · revisione 2", alt: "Davide salta verso l’uscita del carcere infernale, con il vuoto dei gironi sotto di lui." },
-      { src: "/media/materiali/post-04-fuori-v2", label: "2 / 2 · Finalmente fuori · revisione 2", alt: "Davide finalmente all’aperto, con il carcere infernale alle spalle e i segni della risalita sul volto." },
+      { src: "/media/materiali/post-04-salto-v3", label: "1 / 2 · Il salto · revisione 3", alt: "Davide salta verso l’uscita del carcere infernale, con il vuoto dei gironi sotto di lui." },
+      { src: "/media/materiali/post-04-fuori-v3", label: "2 / 2 · Finalmente fuori · revisione 3", alt: "Davide finalmente all’aperto, con il carcere infernale alle spalle e i segni della risalita sul volto." },
     ],
   },
 ];

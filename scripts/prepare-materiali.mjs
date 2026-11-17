@@ -18,11 +18,16 @@ await fs.mkdir(output, { recursive: true });
 await fs.mkdir(path.dirname(artifact), { recursive: true });
 
 const definitions = [
-  ['post-01-attuale', 'Primo post — vestiti strappati v9', path.join(feedback, 'K01-inferno-vestiti-strappati-v9.png'), 'attuale'],
-  ['post-02-featuring-v2', 'Post 02 — featuring nel carcere infernale, revisione 2', path.join(revised, 'K02-featuring-inferno-v2.png'), 'revisione'],
-  ['post-03-trasformazione-v2', 'Post 03 — trasformazione, revisione 2', path.join(revised, 'K03-trasformazione-inferno-v2.png'), 'revisione'],
-  ['post-04-salto-v2', 'Post 04 — salto, revisione 2', path.join(revised, 'K04-salto-inferno-v2.png'), 'revisione'],
-  ['post-04-fuori-v2', 'Post 04 — fuori dal carcere, revisione 2', path.join(revised, 'K04B-fuori-inferno-v2.png'), 'revisione'],
+  ['post-01-attuale', 'Primo post — abiti vissuti e tatuaggi aggiornati v10', path.join(feedback, 'K01-inferno-vestiti-strappati-v10.png'), 'attuale'],
+  ['post-02-featuring-v3', 'Post 02 — featuring nel carcere infernale, revisione 3 — abiti vissuti e tatuaggi aggiornati', path.join(feedback, 'K02-featuring-inferno-v3.png'), 'revisione'],
+  ['post-03-trasformazione-v3', 'Post 03 — trasformazione, revisione 3 — abiti vissuti e tatuaggi aggiornati', path.join(feedback, 'K03-trasformazione-inferno-v3.png'), 'revisione'],
+  ['post-04-salto-v3', 'Post 04 — salto, revisione 3 — abiti vissuti e tatuaggi aggiornati', path.join(feedback, 'K04-salto-inferno-v3.png'), 'revisione'],
+  ['post-04-fuori-v3', 'Post 04 — fuori dal carcere, revisione 3 — abiti vissuti e tatuaggi aggiornati', path.join(feedback, 'K04B-fuori-inferno-v3.png'), 'revisione'],
+  ['post-02-featuring-v2', 'Post 02 — featuring nel carcere infernale, revisione 2', path.join(revised, 'K02-featuring-inferno-v2.png'), 'archivio'],
+  ['post-03-trasformazione-v2', 'Post 03 — trasformazione, revisione 2', path.join(revised, 'K03-trasformazione-inferno-v2.png'), 'archivio'],
+  ['post-04-salto-v2', 'Post 04 — salto, revisione 2', path.join(revised, 'K04-salto-inferno-v2.png'), 'archivio'],
+  ['post-04-fuori-v2', 'Post 04 — fuori dal carcere, revisione 2', path.join(revised, 'K04B-fuori-inferno-v2.png'), 'archivio'],
+  ['post-01-v9', 'Primo post — vestiti strappati v9', path.join(feedback, 'K01-inferno-vestiti-strappati-v9.png'), 'archivio'],
   ['post-01-v8', 'Primo post — ritratto naturale v8', path.join(current, 'K01-inferno-ritratto-naturale-v8.png'), 'archivio'],
   ['post-01-v7', 'Primo post — somiglianza v7', path.join(current, 'K01-inferno-somiglianza-v7.png'), 'archivio'],
   ['post-01-v6', 'Primo post — volto v6', path.join(current, 'K01-inferno-volto-reference-v6.png'), 'archivio'],
@@ -133,15 +138,15 @@ with zipfile.ZipFile(data['destination']) as archive:
 if (zipper.status !== 0) throw new Error(zipper.stderr);
 const archive = { url: '/media/materiali/campagna-materiali.zip',
   bytes: (await fs.stat(archiveFile)).size, files: JSON.parse(zipper.stdout), verified: true };
-const expectedCounts = { png: 20, jpg: 5, mp4: 1, txt: 3 };
+const expectedCounts = { png: 25, jpg: 5, mp4: 1, txt: 3 };
 for (const [extension, count] of Object.entries(expectedCounts)) {
   if (archive.files.filter(name => name.endsWith(`.${extension}`)).length !== count) {
     throw new Error(`Expected ${count} ${extension.toUpperCase()} files.`);
   }
 }
-if (archive.files.length !== 29) throw new Error('Expected twenty-nine archive members.');
+if (archive.files.length !== 34) throw new Error('Expected thirty-four archive members.');
 const hashes = assets.map(asset => asset.original.sha256);
-if (new Set(hashes).size !== 20) throw new Error('Expected twenty distinct original images.');
+if (new Set(hashes).size !== 25) throw new Error('Expected twenty-five distinct original images.');
 const manifest = { date: '2026-11-17', assets, instagram, instagramExports, video, poster, archive,
   originalImageCount: assets.length, originalImageBytes: assets.reduce((sum, asset) => sum + asset.original.bytes, 0),
   newWebpBytes: assets.filter(asset => asset.preview.url.startsWith('/media/materiali/')).reduce((sum, asset) => sum + asset.preview.bytes, 0),

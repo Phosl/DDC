@@ -47,7 +47,7 @@ const homeStructuredData = {
       name: siteConfig.projectName,
       description: siteConfig.description,
       url: absoluteUrl("/#progetto"),
-      image: absoluteUrl("/media/materiali/post-03-trasformazione-v2.webp"),
+      image: absoluteUrl("/media/materiali/post-03-trasformazione-v3.webp"),
       inLanguage: siteConfig.language,
       creator: {
         "@id": absoluteUrl("/#artist"),
@@ -216,7 +216,7 @@ export default function HomePage() {
         <div className={styles.projectGrid}>
           <div className={styles.projectPortrait} data-chapter-image>
             <Image
-              src="/media/materiali/post-03-trasformazione-v2.webp"
+              src="/media/materiali/post-03-trasformazione-v3.webp"
               alt="La trasformazione di Davide in Ghetto Superstar, tra le gallerie del carcere infernale"
               fill
               sizes="(max-width: 768px) 100vw, 38vw"
@@ -284,7 +284,7 @@ export default function HomePage() {
       <footer className={styles.footer}>
         <div className={styles.footerPortrait}>
           <Image
-            src="/media/materiali/post-04-fuori-v2.webp"
+            src="/media/materiali/post-04-fuori-v3.webp"
             alt="Davide finalmente fuori dal carcere infernale, sotto il cielo aperto"
             fill
             sizes="(max-width: 768px) 100vw, 42vw"

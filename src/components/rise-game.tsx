@@ -1036,9 +1036,9 @@ export function RiseGame() {
           <div className={styles.overlayArtwork} aria-hidden="true" data-testid="rise-game-scene">
             <Image
               src={phase === 'complete'
-                ? '/media/materiali/post-04-fuori-v2.webp'
+                ? '/media/materiali/post-04-fuori-v3.webp'
                 : phase === 'paused'
-                  ? '/media/materiali/post-03-trasformazione-v2.webp'
+                  ? '/media/materiali/post-03-trasformazione-v3.webp'
                   : '/media/materiali/post-01-attuale.webp'}
               alt=""
               fill

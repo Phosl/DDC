@@ -56,9 +56,9 @@ export default function MaterialsPage() {
         <section id="primo-post" className={styles.first} aria-labelledby="first-title">
           <div className={styles.firstImage}>
             <a href="/media/materiali/post-01-attuale.png" target="_blank" rel="noopener noreferrer" aria-label="Apri il primo post, versione attuale">
-              <Image src="/media/materiali/post-01-attuale.webp" alt="Davide senza occhiali, con lievi segni sul volto e abiti consumati con piccoli strappi, seduto nella cella di un carcere infernale. Gironi, ponti e un fiume di fuoco alle spalle; una luce lontana in alto." width={1122} height={1402} unoptimized loading="eager" />
+              <Image src="/media/materiali/post-01-attuale.webp" alt="Davide senza occhiali, con lievi segni sul volto, abiti vissuti e tatuaggi aggiornati, seduto nella cella di un carcere infernale. Gironi, ponti e un fiume di fuoco alle spalle; una luce lontana in alto." width={1122} height={1402} unoptimized loading="eager" />
             </a>
-            <p className={styles.note}>Ultima revisione · Versione 9 · Da rivedere prima della pubblicazione</p>
+            <p className={styles.note}>Ultima revisione · Versione 10 · Da rivedere prima della pubblicazione</p>
           </div>
           <div className={styles.firstInfo}>
             <p className={styles.eyebrow}>Post 01 / <time dateTime="2026-11-17">17 novembre 2026</time></p>
@@ -95,7 +95,7 @@ export default function MaterialsPage() {
 
         <section id="post-successivi" className={styles.section} aria-labelledby="posts-title">
           <header className={styles.sectionHeading}><div><p className={styles.eyebrow}>Il seguito della storia</p><h2 id="posts-title">Le prossime scene.</h2></div></header>
-          <p className={styles.note}>Revisione 2 · Volto e carcere infernale aggiornati. Immagini da rivedere prima della pubblicazione; JPG per Instagram in formato 1080 × 1350.</p>
+          <p className={styles.note}>Revisione 3 · Abiti vissuti e tatuaggi aggiornati, coerenti con il primo post. Stesso volto e carcere infernale. Immagini da rivedere prima della pubblicazione; JPG per Instagram in formato 1080 × 1350.</p>
           <div className={styles.grid}>{nextPostImages.map((picture) => <PictureCard key={picture.src} {...picture} />)}</div>
         </section>
 

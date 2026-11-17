@@ -10,20 +10,25 @@ Entra nel gioco dal link in bio.
 export const campaignSchedule = [
   { date: "2026-11-17", day: "17 nov", format: "Post 01", title: "Il fondo", status: "Immagine e caption disponibili", href: "#primo-post" },
   { date: "2026-11-19", day: "19 nov", format: "Reel 01", title: "Ritrovare la forza", status: "Montaggio pronto · look da aggiornare", href: "#reel" },
-  { date: "2026-11-20", day: "20 nov", format: "Post 02", title: "Il featuring", status: "Revisione 2 disponibile", href: "#post-successivi" },
-  { date: "2026-11-23", day: "23 nov", format: "Post 03", title: "La trasformazione", status: "Revisione 2 disponibile", href: "#post-successivi" },
-  { date: "2026-11-25", day: "25 nov", format: "Post 04", title: "Il salto / Fuori", status: "Due immagini · revisione 2", href: "#post-successivi" },
+  { date: "2026-11-20", day: "20 nov", format: "Post 02", title: "Il featuring", status: "Revisione 3 disponibile", href: "#post-successivi" },
+  { date: "2026-11-23", day: "23 nov", format: "Post 03", title: "La trasformazione", status: "Revisione 3 disponibile", href: "#post-successivi" },
+  { date: "2026-11-25", day: "25 nov", format: "Post 04", title: "Il salto / Fuori", status: "Due immagini · revisione 3", href: "#post-successivi" },
   { date: "2026-11-27", day: "27 nov", format: "Reel 02", title: "Il flashback", status: "Scaletta disponibile · video da montare", href: "#direzione" },
 ] as const;
 
 export const nextPostImages = [
-  { src: "/media/materiali/post-02-featuring-v2", title: "Il featuring", label: "Post 02 · 20 novembre · Rev. 2", instagram: "/media/materiali/post-02-featuring-v2-instagram.jpg", alt: "Davide nel carcere infernale con annuncio DDC × O.G. Eastbull, 27 novembre; volto e ambientazione aggiornati." },
-  { src: "/media/materiali/post-03-trasformazione-v2", title: "La trasformazione", label: "Post 03 · 23 novembre · Rev. 2", instagram: "/media/materiali/post-03-trasformazione-v2-instagram.jpg", alt: "Davide si trasforma in Ghetto Superstar nel carcere infernale, con il volto aggiornato e i segni del percorso." },
-  { src: "/media/materiali/post-04-salto-v2", title: "Il salto", label: "Post 04 · immagine 1 · Rev. 2", instagram: "/media/materiali/post-04-salto-v2-instagram.jpg", alt: "Davide compie il salto verso l’uscita del carcere infernale, sopra il vuoto dei gironi." },
-  { src: "/media/materiali/post-04-fuori-v2", title: "Finalmente fuori", label: "Post 04 · immagine 2 · Rev. 2", instagram: "/media/materiali/post-04-fuori-v2-instagram.jpg", alt: "Davide finalmente fuori dal carcere infernale, con il volto aggiornato e i segni della risalita." },
+  { src: "/media/materiali/post-02-featuring-v3", title: "Il featuring", label: "Post 02 · 20 novembre · Rev. 3", instagram: "/media/materiali/post-02-featuring-v3-instagram.jpg", alt: "Davide nel carcere infernale con annuncio DDC × O.G. Eastbull, 27 novembre; volto e ambientazione aggiornati." },
+  { src: "/media/materiali/post-03-trasformazione-v3", title: "La trasformazione", label: "Post 03 · 23 novembre · Rev. 3", instagram: "/media/materiali/post-03-trasformazione-v3-instagram.jpg", alt: "Davide si trasforma in Ghetto Superstar nel carcere infernale, con il volto aggiornato e i segni del percorso." },
+  { src: "/media/materiali/post-04-salto-v3", title: "Il salto", label: "Post 04 · immagine 1 · Rev. 3", instagram: "/media/materiali/post-04-salto-v3-instagram.jpg", alt: "Davide compie il salto verso l’uscita del carcere infernale, sopra il vuoto dei gironi." },
+  { src: "/media/materiali/post-04-fuori-v3", title: "Finalmente fuori", label: "Post 04 · immagine 2 · Rev. 3", instagram: "/media/materiali/post-04-fuori-v3-instagram.jpg", alt: "Davide finalmente fuori dal carcere infernale, con il volto aggiornato e i segni della risalita." },
 ] as const;
 
 export const previousImages = [
+  { src: "/media/materiali/post-01-v9", title: "I primi strappi", label: "Versione 9" },
+  { src: "/media/materiali/post-02-featuring-v2", title: "Il featuring", label: "Post 02 · Rev. 2" },
+  { src: "/media/materiali/post-03-trasformazione-v2", title: "La trasformazione", label: "Post 03 · Rev. 2" },
+  { src: "/media/materiali/post-04-salto-v2", title: "Il salto", label: "Post 04 · Rev. 2" },
+  { src: "/media/materiali/post-04-fuori-v2", title: "Finalmente fuori", label: "Post 04 · Rev. 2" },
   { src: "/media/materiali/post-01-v8", title: "Il ritratto naturale", label: "Versione 8" },
   { src: "/media/materiali/post-01-v7", title: "Volto frontale", label: "Versione 7" },
   { src: "/media/materiali/post-01-v6", title: "Prime reference del viso", label: "Versione 6" },
