@@ -1539,9 +1539,9 @@ export function createAscentScene(
         if (isBodyObject(boss)) this.damageBoss(boss)
       })
       this.physics.add.collider(
-        this.playerProjectiles,
         this.crumblePlatforms,
-        (projectile, platform) => {
+        this.playerProjectiles,
+        (platform, projectile) => {
           if (isBodyObject(platform)) this.armCrumblePlatform(platform)
           if (isBodyObject(projectile)) {
             this.vfx?.playWorld('verse-impact', projectile.x, projectile.y, {scale: 0.82})
@@ -1555,7 +1555,7 @@ export function createAscentScene(
         this.movingPlatforms,
         this.crumblePlatforms,
       ].forEach((platforms) => {
-        this.physics.add.collider(this.hostileProjectiles, platforms, (projectile) => {
+        this.physics.add.collider(platforms, this.hostileProjectiles, (_platform, projectile) => {
           if (isBodyObject(projectile)) this.dissolveHostileProjectile(projectile)
         })
       })
@@ -2450,7 +2450,9 @@ export function createAscentScene(
         this.emitAnnouncement(level.title)
       }
 
-      if (this.player.y <= 46 && !this.hasLivingBoss('charon')) this.completeRun()
+      // At the world ceiling, the 64px touch body cannot lift its feet past y=46.
+      const playerBody = this.player.body as Phaser.Physics.Arcade.Body
+      if (playerBody.top <= 14 && !this.hasLivingBoss('charon')) this.completeRun()
     }
 
     private collectPickup(pickup: BodyObject) {

@@ -337,7 +337,8 @@ function buildLevel(spec: LevelLayoutSpec): CircleLevelDefinition {
   }
   grid[LEVEL_ROWS - 1].fill("#");
   if (spec.orderFromBottom > 0) {
-    for (let column = route[0].column - 2; column <= route[0].column + 2; column += 1) {
+    // Leave room to steer the 44px touch body while rising through the floor.
+    for (let column = route[0].column - 4; column <= route[0].column + 4; column += 1) {
       grid[LEVEL_ROWS - 1][column] = " ";
     }
   }
@@ -346,9 +347,10 @@ function buildLevel(spec: LevelLayoutSpec): CircleLevelDefinition {
     placePlatform(grid, {
       ...node,
       width: index === 0 || index === route.length - 1 ? 9 : 5,
-      // Upper segments remain physically connected: the player rises through
-      // the floor opening and lands on this one-way entry platform.
-      symbol: index === 0 && spec.orderFromBottom > 0 ? "-" : spec.kinds[index],
+      // Entry and exit landings must not trap the taller touch actor underneath.
+      symbol: index === route.length - 1 || (index === 0 && spec.orderFromBottom > 0)
+        ? "-"
+        : spec.kinds[index],
     });
   });
   spec.extras?.forEach((platform) => placePlatform(grid, platform));
@@ -535,7 +537,7 @@ export function validateCircleLevels(levels: readonly CircleLevelDefinition[] = 
     if (previousLevel) {
       const previousExitColumn = previousLevel.rows.find((row) => row.includes("X"))?.indexOf("X") ?? -1;
       const entryColumn = level.rows.find((row) => row.includes("S"))?.indexOf("S") ?? -1;
-      const entryGap = level.rows[LEVEL_ROWS - 1]?.slice(entryColumn - 2, entryColumn + 3);
+      const entryGap = level.rows[LEVEL_ROWS - 1]?.slice(entryColumn - 4, entryColumn + 5);
       const entryNode = level.route[0];
       const entrySurface = entryNode ? level.rows[entryNode.row]?.[entryNode.column] : undefined;
 
@@ -543,7 +545,7 @@ export function validateCircleLevels(levels: readonly CircleLevelDefinition[] = 
         previousExitColumn < 0 ||
         entryColumn < 0 ||
         Math.abs(previousExitColumn - entryColumn) > 1 ||
-        entryGap !== "     " ||
+        entryGap !== "         " ||
         entrySurface !== "-"
       ) {
         issue({ code: "route", message: `The seam from ${previousLevel.id} to ${level.id} is not traversable.` });

@@ -110,6 +110,13 @@ describe("Cantica Zero world data", () => {
     });
   });
 
+  it("lets the taller touch actor rise through every exit landing", () => {
+    for (const level of CIRCLE_LEVELS) {
+      const exitLanding = level.route.at(-1)!;
+      expect(level.rows[exitLanding.row][exitLanding.column], level.id).toBe("-");
+    }
+  });
+
   it("builds valid 24 by 64 ASCII maps with complete pickup sets", () => {
     for (const level of CIRCLE_LEVELS) {
       expect(level.rows).toHaveLength(LEVEL_ROWS);
@@ -239,7 +246,14 @@ describe("Cantica Zero world data", () => {
       const entryColumn = level.rows.find((row) => row.includes("S"))?.indexOf("S") ?? -1;
 
       expect(Math.abs(previousExitColumn - entryColumn)).toBeLessThanOrEqual(1);
-      expect(level.rows[LEVEL_ROWS - 1].slice(entryColumn - 2, entryColumn + 3)).toBe("     ");
+      const floor = level.rows[LEVEL_ROWS - 1];
+      const opening = floor.slice(entryColumn - 4, entryColumn + 5);
+      expect(opening).toBe("         ");
+      expect(floor[0]).toBe("#");
+      expect(floor.at(-1)).toBe("#");
+      const touchBodyWidth = DIFFICULTY_TUNING.assist.player.width * 2;
+      const centeringMargin = (opening.length * TILE_SIZE - touchBodyWidth) / 2;
+      expect(centeringMargin).toBeGreaterThan(DIFFICULTY_TUNING.assist.player.speed * 0.2);
       expect(level.rows[level.route[0].row][level.route[0].column]).toBe("-");
     });
   });

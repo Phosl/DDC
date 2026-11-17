@@ -151,6 +151,11 @@ export async function createRiseGame(options: CreateRiseGameOptions): Promise<Ga
     },
   })
 
+  // Opt-in local playtests inspect the world while driving the real DOM controls.
+  if (process.env.NODE_ENV !== 'production' && '__DDC_PLAYTEST__' in window && window.__DDC_PLAYTEST__) {
+    Object.assign(window, {__DDC_PLAYTEST_RUNTIME__: {scene, bridge, game}})
+  }
+
   const applyViewportSize = () => {
     if (destroyed) return
     const bounds = options.parent.getBoundingClientRect()
@@ -271,6 +276,9 @@ export async function createRiseGame(options: CreateRiseGameOptions): Promise<Ga
     destroy() {
       if (destroyed) return
       destroyed = true
+      if (process.env.NODE_ENV !== 'production' && Reflect.get(window, '__DDC_PLAYTEST_RUNTIME__')?.game === game) {
+        Reflect.deleteProperty(window, '__DDC_PLAYTEST_RUNTIME__')
+      }
       parentResizeObserver?.disconnect()
       if (!parentResizeObserver) window.removeEventListener('resize', applyViewportSize)
       bridge.destroyed = true
